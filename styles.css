@@ -341,11 +341,42 @@ body::before {
     gap: 6px;
 }
 
+.pencil-icons-container {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-right: 4px;
+}
+
 .pencil-icon {
     flex-shrink: 0;
     color: var(--dark-green);
     opacity: 0.7;
     vertical-align: middle;
+    transition: opacity 0.3s ease;
+}
+
+.pencil-icon.bounce {
+    animation: pencilBounce 0.5s ease;
+}
+
+.pencil-icon.faded {
+    opacity: 0.3;
+}
+
+@keyframes pencilBounce {
+    0%, 100% {
+        transform: translateY(0) scale(1);
+    }
+    25% {
+        transform: translateY(-8px) scale(1.1);
+    }
+    50% {
+        transform: translateY(0) scale(1);
+    }
+    75% {
+        transform: translateY(-4px) scale(1.05);
+    }
 }
 
 #mistakes-left-text {
@@ -531,6 +562,31 @@ body::before {
 
 .completion-details {
     margin-bottom: 30px;
+}
+
+.completion-timer {
+    font-size: 1.05rem;
+    color: var(--text-color);
+    margin: 15px 0 25px 0;
+    text-align: center;
+    letter-spacing: 0.5px;
+}
+
+.completion-timer .timer-label {
+    color: var(--text-color);
+    opacity: 0.65;
+    font-weight: 400;
+    font-style: italic;
+    font-size: 0.95rem;
+}
+
+.completion-timer .timer-value {
+    color: var(--dark-green);
+    font-weight: 700;
+    font-size: 1.15rem;
+    font-style: normal;
+    margin-left: 6px;
+    letter-spacing: 0.5px;
 }
 
 .completion-message {
@@ -1477,6 +1533,11 @@ html {
     #mistakes-left {
         font-size: 0.75rem;
         gap: 5px;
+    }
+    
+    .pencil-icons-container {
+        gap: 3px;
+        margin-right: 3px;
     }
     
     .pencil-icon {
