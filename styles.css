@@ -574,60 +574,59 @@ body::before {
 
 /* Archive Modal */
 .archive-content {
-    max-width: 700px;
+    max-width: 500px;
 }
 
 .archive-description {
-    text-align: center;
-    color: #666;
-    margin-bottom: 20px;
+    display: none;
 }
 
 .archive-list {
-    max-height: 400px;
+    max-height: 350px;
     overflow-y: auto;
-    margin-bottom: 20px;
+    margin-bottom: 15px;
 }
 
 .archive-item {
-    background: #f9f9f9;
-    padding: 15px;
-    margin-bottom: 10px;
-    border-radius: 8px;
-    border: 1px solid var(--border-color);
+    padding: 10px 12px;
+    margin-bottom: 6px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
     cursor: pointer;
-    transition: all 0.2s ease;
-    display: flex;
-    justify-content: space-between;
+    transition: background 0.15s ease;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 12px;
     align-items: center;
 }
 
 .archive-item:hover {
-    background: #f0f0f0;
-    border-color: var(--primary-color);
-    transform: translateX(5px);
+    background: rgba(0, 0, 0, 0.03);
 }
 
 .archive-item.completed {
-    background: #e8f5e9;
-    border-color: var(--correct-color);
+    opacity: 0.7;
 }
 
-.archive-item-date {
+.archive-number {
     font-weight: 600;
-    color: var(--text-color);
-}
-
-.archive-item-title {
-    color: #666;
+    color: var(--dark-green);
     font-size: 0.9rem;
-    margin-top: 5px;
+    min-width: 40px;
 }
 
-.archive-item-status {
-    font-size: 0.85rem;
-    color: var(--correct-color);
-    font-weight: 600;
+.archive-title {
+    color: var(--text-color);
+    font-size: 0.9rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.archive-date {
+    color: #666;
+    font-size: 0.8rem;
+    text-align: right;
+    white-space: nowrap;
 }
 
 /* Remove old header styles - no longer needed */
@@ -1569,6 +1568,18 @@ html {
     .completion-modal .modal-content h2,
     .archive-modal .modal-content h2 {
         font-size: 1.8rem;
+    }
+    
+    .archive-item {
+        grid-template-columns: auto 1fr;
+        gap: 8px;
+    }
+    
+    .archive-date {
+        grid-column: 1 / -1;
+        font-size: 0.75rem;
+        text-align: left;
+        margin-top: 2px;
     }
     
     .checkmark-animation {
