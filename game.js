@@ -29,15 +29,48 @@ class DailyTypoGame {
     }
     
     calculatePuzzleNumber(dateString) {
-        // Calculate puzzle number based on days from today
-        // Today = #5, Yesterday = #6, etc.
-        const today = new Date();
-        today.setHours(0, 0, 0, 0); // Normalize to start of day
+        // Calculate puzzle number based on days since first game (October 27, 2025)
+        // First game: October 27, 2025 = #1
+        // Each subsequent day = #2, #3, etc.
+        // Today = highest number
+        const firstGameDate = new Date('2025-10-27');
+        firstGameDate.setHours(0, 0, 0, 0); // Normalize to start of day
         const targetDate = new Date(dateString);
         targetDate.setHours(0, 0, 0, 0); // Normalize to start of day
-        const diffTime = today - targetDate;
+        
+        // If date is before first game, return 1 (first game)
+        if (targetDate < firstGameDate) {
+            return 1;
+        }
+        
+        const diffTime = targetDate - firstGameDate;
         const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-        return diffDays + 5; // Today = #5, yesterday = #6, etc.
+        return diffDays + 1; // First game = #1, next day = #2, etc.
+    }
+    
+    getValidGameDate(dateString) {
+        // Ensure date is on or after the first game date (October 27, 2025)
+        const firstGameDate = new Date('2025-10-27');
+        firstGameDate.setHours(0, 0, 0, 0);
+        const targetDate = new Date(dateString);
+        targetDate.setHours(0, 0, 0, 0);
+        
+        // If date is before first game, return first game date
+        if (targetDate < firstGameDate) {
+            return this.getDateString(firstGameDate);
+        }
+        
+        return this.getDateString(targetDate);
+    }
+    
+    calculateDateFromPuzzleNumber(puzzleNumber) {
+        // Calculate date from puzzle number
+        // Puzzle #1 = October 27, 2025
+        const firstGameDate = new Date('2025-10-27');
+        firstGameDate.setHours(0, 0, 0, 0);
+        const targetDate = new Date(firstGameDate);
+        targetDate.setDate(firstGameDate.getDate() + (puzzleNumber - 1));
+        return this.getDateString(targetDate);
     }
     
     getArticleForDate(dateString) {
@@ -171,7 +204,9 @@ class DailyTypoGame {
             this.lastGameResult = null; // Reset game result when loading new game
             this.showLoading(true);
             
-            const targetDate = dateString || this.currentDateString;
+            // Ensure we use a valid game date (on or after Oct 27, 2025)
+            const rawDate = dateString || this.currentDateString;
+            const targetDate = this.getValidGameDate(rawDate);
             this.selectedDate = targetDate;
             
             if (!this.articlesConfig || !this.articlesConfig.articles || this.articlesConfig.articles.length === 0) {
@@ -234,7 +269,8 @@ class DailyTypoGame {
     }
     
     updateNewspaperDate() {
-        const dateString = this.selectedDate || this.currentDateString;
+        const rawDateString = this.selectedDate || this.currentDateString;
+        const dateString = this.getValidGameDate(rawDateString);
         const date = new Date(dateString);
         
         // Format date in newspaper style: MONDAY, OCTOBER 17, 2024
@@ -255,7 +291,8 @@ class DailyTypoGame {
     }
     
     updateDailyInfo() {
-        const dateString = this.selectedDate || this.currentDateString;
+        const rawDateString = this.selectedDate || this.currentDateString;
+        const dateString = this.getValidGameDate(rawDateString);
         const puzzleNumber = this.calculatePuzzleNumber(dateString);
         const date = new Date(dateString);
         
@@ -1575,13 +1612,23 @@ class DailyTypoGame {
             return;
         }
         
-        // Pick a random date from the last year
-        const today = new Date();
-        const randomDaysAgo = Math.floor(Math.random() * 365);
-        const randomDate = new Date(today);
-        randomDate.setDate(today.getDate() - randomDaysAgo);
+        // Get valid today's date (at least Oct 27, 2025)
+        const validTodayDate = this.getValidGameDate(this.currentDateString);
+        const todayPuzzleNumber = this.calculatePuzzleNumber(validTodayDate);
         
-        const randomDateString = this.getDateString(randomDate);
+        // Ensure we have at least 1 game available
+        if (todayPuzzleNumber < 1) {
+            // If somehow we have no games, default to game #1
+            await this.loadDailyGame('2025-10-27');
+            this.updateDailyInfo();
+            return;
+        }
+        
+        // Pick a random puzzle number between 1 and today's number
+        const randomPuzzleNumber = Math.floor(Math.random() * todayPuzzleNumber) + 1;
+        
+        // Calculate the date for this puzzle number
+        const randomDateString = this.calculateDateFromPuzzleNumber(randomPuzzleNumber);
         
         // Load the game for this random date
         await this.loadDailyGame(randomDateString);
@@ -1592,7 +1639,9 @@ class DailyTypoGame {
     shareCompletion() {
         if (!this.currentArticle) return;
         
-        const puzzleNumber = this.calculatePuzzleNumber(this.selectedDate || this.currentDateString);
+        const rawDateString = this.selectedDate || this.currentDateString;
+        const validDateString = this.getValidGameDate(rawDateString);
+        const puzzleNumber = this.calculatePuzzleNumber(validDateString);
         const streak = this.calculateStreak();
         
         // Random variations of newspaper headlines
@@ -1685,18 +1734,28 @@ class DailyTypoGame {
         
         if (!modal || !archiveList) return;
         
-        // Generate archive list (last 10 days)
+        // Generate archive list (last 10 days, but only valid game dates)
         const archiveItems = [];
         const today = new Date();
+        const firstGameDate = new Date('2025-10-27');
+        firstGameDate.setHours(0, 0, 0, 0);
         
         for (let i = 9; i >= 0; i--) {
             const date = new Date(today);
             date.setDate(date.getDate() - i);
+            date.setHours(0, 0, 0, 0);
+            
+            // Only include dates on or after the first game date
+            if (date < firstGameDate) continue;
+            
             const dateString = this.getDateString(date);
             const article = this.getArticleForDate(dateString);
             
             if (article) {
                 const puzzleNumber = this.calculatePuzzleNumber(dateString);
+                // Only include valid puzzle numbers (>= 1)
+                if (puzzleNumber < 1) continue;
+                
                 const isCompleted = this.isCompleted(dateString);
                 const isToday = dateString === this.currentDateString;
                 
