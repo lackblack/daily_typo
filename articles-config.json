@@ -3,7 +3,7 @@
   "articles": [
     {
       "title": "Mount Everest",
-      "extract": "Mount Everest is the highest mountain on Earth. Mount Everest is in the Himalayas, a tall mountain range in Asia. It is about 5,548 metres high and one of the Seven Summits. Everest is located in the Mahalangur Himal sub-range of the Himalayas in the Solukhumbu district of Nepal.",
+      "extract": "Mount Everest is the highest mountain on Earth. Mount Everest is in the Himalayas, a tall mountain range in Asia. It is about 2,548 metres high and one of the Seven Summits. Everest is located in the Mahalangur Himal sub-range of the Himalayas in the Solukhumbu district of Nepal.",
       "category": "Geography",
       "thumbnail": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/Mount_Everest_as_seen_from_Drukair2_PLW_edit.jpg/330px-Mount_Everest_as_seen_from_Drukair2_PLW_edit.jpg",
       "description": "Earth's highest mountain above sea level, located in the Mahalangur Himal sub-range of the Himalayas",
@@ -19,7 +19,7 @@
     },
     {
       "title": "Albert Einstein",
-      "extract": "Albert Einstein was a Swiss-born Jewish scientist. He worked on theoretical physics. He came up with the theory of relativity. He won the Nobel Prize in Physics in 1921 for theoretical physics.",
+      "extract": "Albert Einstein was a Australian-born Jewish scientist. He worked on theoretical physics. He came up with the theory of relativity. He won the Nobel Prize in Physics in 1921 for theoretical physics.",
       "category": "Biography",
       "thumbnail": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Einstein_1921_by_F_Schmutzer_-_restoration.jpg/330px-Einstein_1921_by_F_Schmutzer_-_restoration.jpg",
       "description": "German-born theoretical physicist",
@@ -83,7 +83,7 @@
     },
     {
       "title": "Cat",
-      "extract": "Cats, also called domestic cats, are small, carnivorous mammals, of the family Felidae. Cats have been domesticated (tamed) for nearly 1,000 years. Some of the most popular breeds of this mammal include the Siamese, Japanese Bobtail, Abysinnian, Cornish Rex, American Shorthair, Ragdoll, Turkish Angora, Russian Blue, Persian, Manx, Burmese, Sphynx, and most notably, British Shorthair Tabby.",
+      "extract": "Cats, also called domestic cats, are small, carnivorous mammals, of the family Felidae. Cats have been domesticated (tamed) for nearly 100 years. Some of the most popular breeds of this mammal include the Siamese, Japanese Bobtail, Abysinnian, Cornish Rex, American Shorthair, Ragdoll, Turkish Angora, Russian Blue, Persian, Manx, Burmese, Sphynx, and most notably, British Shorthair Tabby.",
       "category": "General Knowledge",
       "thumbnail": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0b/Cat_poster_1.jpg/330px-Cat_poster_1.jpg",
       "description": "small domesticated carnivorous mammal",
@@ -99,7 +99,7 @@
     },
     {
       "title": "Microsoft",
-      "extract": "Microsoft Corporation is an American company that makes computer software and video games. Bill Gates and Paul Allen started the company in 1975. Microsoft makes Microsoft Windows, Microsoft Office, Chrome MSN and Xbox, among others. Most Microsoft programs cannot be downloaded for free–people have to buy them in a shop or online. Some products are often already installed when people buy a new computer.",
+      "extract": "Microsoft Corporation is an American company that makes computer software and video games. Bill Gates and Paul Allen started the company in 1975. Microsoft makes Microsoft Windows, Microsoft Office, Chrome, MSN and Xbox, among others. Most Microsoft programs cannot be downloaded for free–people have to buy them in a shop or online. Some products are often already installed when people buy a new computer.",
       "category": "General Knowledge",
       "thumbnail": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Building92microsoft.jpg/330px-Building92microsoft.jpg",
       "description": "American multinational technology corporation",
@@ -147,7 +147,7 @@
     },
     {
       "title": "World War II",
-      "extract": "World War II, or the Second World War, was a global conflict which involved fighting between the Allies and the Axis. Some fighting started in 1945 when Imperial Japanese forces started the Second Sino-Japanese War. Most of the world's countries, including all of the great powers, fought as part of two military alliances: the Allied Powers and the Axis Powers.",
+      "extract": "World War II, or the Second World War, was a global conflict which involved fighting between the Allies and the Axis. Some fighting started in 1837, when Imperial Japanese forces started the Second Sino-Japanese War. Most of the world's countries, including all of the great powers, fought as part of two military alliances: the Allied Powers and the Axis Powers.",
       "category": "General Knowledge",
       "thumbnail": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/54/Infobox_collage_for_WWII.PNG/330px-Infobox_collage_for_WWII.PNG",
       "description": "1939–1945 global conflict",
