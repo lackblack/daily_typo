@@ -1747,22 +1747,23 @@ class DailyTypoGame {
         
         // Build share text (minimal, per spec)
         let shareText = `${headline}\n\n`;
-        shareText += `Found the typo.\n\n`;
         
-        // Add elapsed time if available
+        // Add elapsed time if available - put it on same line as "Found the typo."
         if (this.elapsedTime) {
             const elapsedSeconds = Math.floor(this.elapsedTime / 1000);
             const minutes = Math.floor(elapsedSeconds / 60);
             const seconds = elapsedSeconds % 60;
             const timeStr = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
-            shareText += `⏱ ${timeStr}\n\n`;
+            shareText += `Found the typo. ⏱ ${timeStr}\n\n`;
+        } else {
+            shareText += `Found the typo.\n\n`;
         }
         
         // Prefer production URL; fallback to current URL if not available
         const shareUrl = 'https://dailytypo.com/';
         
-        // Add URL to text (single instance) - don't pass url parameter to avoid duplicates
-        const shareTextWithUrl = `${shareText}\n\n${shareUrl}`;
+        // Add URL to text (single instance) - reduced spacing
+        const shareTextWithUrl = `${shareText}${shareUrl}`;
         
         // Try Web Share API first (mobile browsers)
         // Only pass text with URL included - don't pass url parameter separately to avoid duplicates
