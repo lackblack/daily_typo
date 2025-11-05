@@ -1407,18 +1407,11 @@ html {
     }
     
     .newspaper-date {
-        top: 4px;
-        left: 15px;
-        font-size: 0.6rem;
+        display: none;
     }
     
     .streak-indicator {
-        top: 4px;
-        right: 15px;
-        font-size: 0.65rem;
-        gap: 4px;
-        flex-wrap: wrap;
-        justify-content: flex-end;
+        display: none;
     }
     
     .streak-coming-soon {
