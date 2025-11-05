@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Daily Typo</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="game-wrapper">
+        <!-- Game Title with Masthead Style -->
+        <div class="game-title-section">
+            <div class="newspaper-date" id="newspaper-date"></div>
+            <div class="streak-indicator" id="streak-indicator">
+                <span class="streak-label">Current Streak:</span>
+                <span class="streak-value" id="streak-value">0</span>
+                <span class="streak-coming-soon">(coming soon)</span>
+            </div>
+            <div class="masthead-line"></div>
+            <div class="game-title-wrapper">
+                <span class="game-title-small">THE</span>
+                <h1 class="game-title">DAILY TYPO</h1>
+            </div>
+            <div class="masthead-line"></div>
+        </div>
+        
+        <!-- Motto and Hamburger Menu -->
+        <div class="motto-menu-wrapper">
+            <div class="game-motto">
+                <p class="motto-text">Proofreading the truth.</p>
+            </div>
+            <div class="title-header-wrapper">
+                <button id="hamburger-menu" class="hamburger-menu" aria-label="Menu">☰</button>
+                <!-- Hamburger Menu Dropdown -->
+                <div class="menu-dropdown" id="menu-dropdown" style="display: none;">
+                    <a href="#" class="menu-item" id="play-random-menu-link">Play Random</a>
+                    <a href="#" class="menu-item" id="archive-link">Archive</a>
+                    <a href="#" class="menu-item" id="feeling-stuck-link">Feeling Stuck?</a>
+                    <a href="#" class="menu-item" id="donate-link">Donate</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Info Bar -->
+        <div class="daily-info-bar">
+            <div class="info-bar-left">
+                <span id="puzzle-number">#217</span>
+                <span id="daily-date">OCTOBER 17</span>
+            </div>
+            <span id="mistakes-left">
+                <svg class="pencil-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                </svg>
+                <span id="mistakes-left-text">2 TRIES LEFT</span>
+            </span>
+        </div>
+
+        <!-- Loading -->
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Loading article...</p>
+        </div>
+
+        <!-- Game Content -->
+        <div class="game-content" id="game-content" style="display: none;">
+            <!-- Article -->
+            <div class="article-wrapper">
+                <div class="article-header">
+                    <div class="game-instruction">
+                        <svg class="instruction-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <path d="M21 21l-4.35-4.35"></path>
+                        </svg>
+                        <span>Find and click the incorrect "word"</span>
+                    </div>
+                    <div class="title-section">
+                        <h2 id="article-title" class="article-title"></h2>
+                        <div class="article-source" id="article-category">General Knowledge</div>
+                    </div>
+                    <div class="feedback" id="feedback"></div>
+                </div>
+                
+                <div class="article-content" id="article-content">
+                    <!-- Article text will be inserted here -->
+                </div>
+                
+                <!-- Submit Buttons (appears below article when text is selected) -->
+                <div class="submit-buttons-wrapper">
+                    <div class="submit-buttons" id="submit-buttons" style="display: none;">
+                        <button id="submit-guess-btn" class="submit-btn primary">SUBMIT TYPO</button>
+                        <button id="clear-selection-btn" class="submit-btn clear">Clear</button>
+                    </div>
+                </div>
+                
+                <!-- Post-Game Message -->
+                <div class="post-game-message" id="post-game-message" style="display: none;">
+                    <div class="post-game-content">
+                        <p class="post-game-text" id="post-game-text"></p>
+                        <div class="post-game-actions">
+                            <button id="post-game-random-btn" class="game-btn secondary">Play Random</button>
+                            <button id="post-game-archive-btn" class="game-btn secondary">Play Archive</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Tutorial Section -->
+        <div class="tutorial-section collapsed">
+            <div class="tutorial-header" id="tutorial-header">
+                <h3>How to Play & Info</h3>
+                <span class="tutorial-toggle" id="tutorial-toggle">▶</span>
+            </div>
+            <div class="tutorial-content" id="tutorial-content">
+                <div class="tutorial-section-content">
+                    <h4>How to Play</h4>
+                    <p>Each article contains <strong>one incorrect "word"</strong> (which could be a word, number, date, or phrase). Use your knowledge to identify which "word" is wrong, then click it and submit your answer. You have <strong>2 tries</strong> to find the error.</p>
+                </div>
+                
+                <div class="tutorial-divider"></div>
+                
+                <div class="tutorial-section-content">
+                    <h4>About the Game</h4>
+                    <p>The Daily Typo fetches articles from Wikipedia (Simple English edition) and introduces one carefully selected error into each article. All content is sourced from Wikipedia and is licensed under <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a>.</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Feedback Section -->
+        <div class="tutorial-section collapsed">
+            <div class="tutorial-header" id="feedback-header">
+                <h3>Feedback & Ideas</h3>
+                <span class="tutorial-toggle" id="feedback-toggle">▶</span>
+            </div>
+            <div class="tutorial-content" id="feedback-content">
+                <div class="tutorial-section-content">
+                    <p>We'd love to hear your thoughts! Your feedback helps us make The Daily Typo even better and more fun.</p>
+                    <ul class="tutorial-list">
+                        <li>Share your ideas for new mechanics or features</li>
+                        <li>Suggest improvements to gameplay</li>
+                        <li>Report bugs or issues</li>
+                        <li>Let us know what you enjoy most about the game</li>
+                    </ul>
+                    <p>Send your feedback to: <strong>feedback@dailytypo.com</strong></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="game-footer">
+            <div class="footer-content">
+                <div class="wikipedia-attribution">
+                    <p>Content from <a href="https://simple.wikipedia.org" target="_blank" rel="noopener noreferrer">Wikipedia</a> (Simple English), licensed under <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a>. Content modified for gameplay.</p>
+                </div>
+                <div class="donation-section">
+                    <button id="donate-btn" class="donate-btn">Support The Daily Typo</button>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Enhanced Completion Modal -->
+    <div class="completion-modal" id="completion-modal" style="display: none;">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <button id="close-completion-btn" class="close-modal-btn" aria-label="Close">×</button>
+            <div class="checkmark-animation">✓</div>
+            <h2>Correct!</h2>
+            <div class="completion-details">
+                <p id="completion-message" class="completion-message"></p>
+                <div class="wikipedia-link-section">
+                    <p class="wikipedia-text">This article is from <a href="https://simple.wikipedia.org" target="_blank" rel="noopener noreferrer">Wikipedia</a>, <a id="wikipedia-link" href="#" target="_blank" rel="noopener noreferrer" class="wikipedia-link">read it full on here</a>.</p>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button id="share-btn" class="game-btn share-btn">Share</button>
+                <button id="play-random-btn" class="game-btn secondary">Play Random</button>
+                <button id="play-archives-btn" class="game-btn secondary">Play Archives</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Archive Modal -->
+    <div class="archive-modal" id="archive-modal" style="display: none;">
+        <div class="modal-overlay"></div>
+        <div class="modal-content archive-content">
+            <h2>Archive</h2>
+            <p class="archive-description">Play past puzzles</p>
+            <div id="archive-list" class="archive-list">
+                <!-- Archive items will be inserted here -->
+            </div>
+            <div class="modal-actions">
+                <button id="close-archive-btn" class="game-btn primary">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>
+
