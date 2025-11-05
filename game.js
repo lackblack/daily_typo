@@ -1761,22 +1761,22 @@ class DailyTypoGame {
         // Prefer production URL; fallback to current URL if not available
         const shareUrl = 'https://dailytypo.com/';
         
+        // Add URL to text (single instance) - don't pass url parameter to avoid duplicates
+        const shareTextWithUrl = `${shareText}\n\n${shareUrl}`;
+        
         // Try Web Share API first (mobile browsers)
-        // Don't include URL in text - let the share API handle it to avoid duplicates
+        // Only pass text with URL included - don't pass url parameter separately to avoid duplicates
         if (navigator.share) {
             navigator.share({
                 title: 'The Daily Typo',
-                text: shareText, // Text without URL - WhatsApp will add URL automatically
-                url: shareUrl
+                text: shareTextWithUrl // Include URL in text only, no separate url parameter
             }).catch(err => {
                 console.log('Error sharing:', err);
-                // Fallback to clipboard with URL included
-                const shareTextWithUrl = `${shareText}\n\n${shareUrl}`;
+                // Fallback to clipboard
                 this.copyToClipboard(shareTextWithUrl);
             });
         } else {
-            // Fallback to clipboard with URL included
-            const shareTextWithUrl = `${shareText}\n\n${shareUrl}`;
+            // Fallback to clipboard
             this.copyToClipboard(shareTextWithUrl);
         }
     }
