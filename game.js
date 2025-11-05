@@ -1771,19 +1771,24 @@ class DailyTypoGame {
         // Add URL to text (single instance) - reduced spacing
         const shareTextWithUrl = `${shareText}${shareUrl}`;
         
-        // Try Web Share API first (mobile browsers)
-        // Only pass text with URL included - don't pass url parameter separately to avoid duplicates
-        if (navigator.share) {
+        // Detect if mobile device (has touch screen and is small screen)
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+                        (window.matchMedia && window.matchMedia('(max-width: 768px)').matches && 'ontouchstart' in window);
+        
+        // Use Web Share API only on mobile - desktop always copies to clipboard
+        if (isMobile && navigator.share) {
             navigator.share({
                 title: 'The Daily Typo',
-                text: shareTextWithUrl // Include URL in text only, no separate url parameter
+                text: shareTextWithUrl
             }).catch(err => {
-                console.log('Error sharing:', err);
-                // Fallback to clipboard
+                // User cancelled or error - fallback to clipboard
+                if (err.name !== 'AbortError') {
+                    console.log('Error sharing:', err);
+                }
                 this.copyToClipboard(shareTextWithUrl);
             });
         } else {
-            // Fallback to clipboard
+            // Desktop or no Web Share API - copy to clipboard (like Wordle)
             this.copyToClipboard(shareTextWithUrl);
         }
     }
@@ -1794,10 +1799,10 @@ class DailyTypoGame {
                 // Show temporary feedback
                 const shareBtn = document.getElementById('share-btn');
                 if (shareBtn) {
-                    const originalText = shareBtn.textContent;
-                    shareBtn.textContent = 'Copied!';
+                    const originalHTML = shareBtn.innerHTML;
+                    shareBtn.innerHTML = 'Copied!';
                     setTimeout(() => {
-                        shareBtn.textContent = originalText;
+                        shareBtn.innerHTML = originalHTML;
                     }, 2000);
                 }
             }).catch(err => {
@@ -1816,10 +1821,10 @@ class DailyTypoGame {
                 document.execCommand('copy');
                 const shareBtn = document.getElementById('share-btn');
                 if (shareBtn) {
-                    const originalText = shareBtn.textContent;
-                    shareBtn.textContent = 'Copied!';
+                    const originalHTML = shareBtn.innerHTML;
+                    shareBtn.innerHTML = 'Copied!';
                     setTimeout(() => {
-                        shareBtn.textContent = originalText;
+                        shareBtn.innerHTML = originalHTML;
                     }, 2000);
                 }
             } catch (err) {
@@ -1998,6 +2003,21 @@ class DailyTypoGame {
                 clearBtn.addEventListener('click', () => this.clearSelection());
             }
             submitButtonsDiv.style.display = 'none';
+        }
+        
+        // Reset share button to original state
+        const shareBtn = document.getElementById('share-btn');
+        if (shareBtn) {
+            shareBtn.innerHTML = `
+                <svg class="share-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="18" cy="5" r="3"></circle>
+                    <circle cx="6" cy="12" r="3"></circle>
+                    <circle cx="18" cy="19" r="3"></circle>
+                    <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                    <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+                </svg>
+                Share
+            `;
         }
     }
     

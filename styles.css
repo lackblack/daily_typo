@@ -801,6 +801,10 @@ body::before {
     background: var(--card-bg);
     color: var(--dark-green);
     border: 1.5px solid var(--dark-green);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
 }
 
 .game-btn.primary:hover,
@@ -808,6 +812,10 @@ body::before {
 .game-btn.share-btn:hover {
     background: var(--dark-green);
     color: white;
+}
+
+.share-icon {
+    flex-shrink: 0;
 }
 
 .game-btn.active {
