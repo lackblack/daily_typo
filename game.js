@@ -30,14 +30,14 @@ class DailyTypoGame {
     
     calculatePuzzleNumber(dateString) {
         // Calculate puzzle number based on days from today
-        // Today = #1, Yesterday = #2, etc.
+        // Today = #5, Yesterday = #6, etc.
         const today = new Date();
         today.setHours(0, 0, 0, 0); // Normalize to start of day
         const targetDate = new Date(dateString);
         targetDate.setHours(0, 0, 0, 0); // Normalize to start of day
         const diffTime = today - targetDate;
         const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-        return diffDays + 1; // Today = #1, yesterday = #2, etc.
+        return diffDays + 5; // Today = #5, yesterday = #6, etc.
     }
     
     getArticleForDate(dateString) {
