@@ -25,7 +25,11 @@ class DailyTypoGame {
     }
     
     getDateString(date) {
-        return date.toISOString().split('T')[0]; // YYYY-MM-DD
+        // Format as YYYY-MM-DD in local time to avoid timezone shifting
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
     }
     
     calculatePuzzleNumber(dateString) {
@@ -33,10 +37,8 @@ class DailyTypoGame {
         // First game: October 27, 2025 = #1
         // Each subsequent day = #2, #3, etc.
         // Today = highest number
-        const firstGameDate = new Date('2025-10-27');
-        firstGameDate.setHours(0, 0, 0, 0); // Normalize to start of day
-        const targetDate = new Date(dateString);
-        targetDate.setHours(0, 0, 0, 0); // Normalize to start of day
+        const firstGameDate = new Date('2025-10-27T00:00:00');
+        const targetDate = dateString.includes('T') ? new Date(dateString) : new Date(dateString + 'T00:00:00');
         
         // If date is before first game, return 1 (first game)
         if (targetDate < firstGameDate) {
@@ -50,10 +52,8 @@ class DailyTypoGame {
     
     getValidGameDate(dateString) {
         // Ensure date is on or after the first game date (October 27, 2025)
-        const firstGameDate = new Date('2025-10-27');
-        firstGameDate.setHours(0, 0, 0, 0);
-        const targetDate = new Date(dateString);
-        targetDate.setHours(0, 0, 0, 0);
+        const firstGameDate = new Date('2025-10-27T00:00:00');
+        const targetDate = dateString.includes('T') ? new Date(dateString) : new Date(dateString + 'T00:00:00');
         
         // If date is before first game, return first game date
         if (targetDate < firstGameDate) {
@@ -66,8 +66,7 @@ class DailyTypoGame {
     calculateDateFromPuzzleNumber(puzzleNumber) {
         // Calculate date from puzzle number
         // Puzzle #1 = October 27, 2025
-        const firstGameDate = new Date('2025-10-27');
-        firstGameDate.setHours(0, 0, 0, 0);
+        const firstGameDate = new Date('2025-10-27T00:00:00');
         const targetDate = new Date(firstGameDate);
         targetDate.setDate(firstGameDate.getDate() + (puzzleNumber - 1));
         return this.getDateString(targetDate);
@@ -1726,73 +1725,55 @@ class DailyTypoGame {
     }
     
     showArchiveModal() {
-        // Prevent body scrollbar when modal opens
         document.body.style.overflow = 'hidden';
         const modal = document.getElementById('archive-modal');
         const archiveList = document.getElementById('archive-list');
         
         if (!modal || !archiveList) return;
         
-        // Generate archive list (last 10 days, but only valid game dates)
-        const archiveItems = [];
-        const today = new Date();
-        const firstGameDate = new Date('2025-10-27');
-        firstGameDate.setHours(0, 0, 0, 0);
+        // Show all available articles (puzzles 1 through number of articles)
+        const totalArticles = this.articlesConfig.articles.length;
+        const puzzles = [];
         
-        for (let i = 9; i >= 0; i--) {
-            const date = new Date(today);
-            date.setDate(date.getDate() - i);
-            date.setHours(0, 0, 0, 0);
+        for (let puzzleNum = 1; puzzleNum <= totalArticles; puzzleNum++) {
+            // Get article
+            const article = this.articlesConfig.articles[puzzleNum - 1];
             
-            // Only include dates on or after the first game date
-            if (date < firstGameDate) continue;
+            // Calculate date for this puzzle
+            const dateString = this.calculateDateFromPuzzleNumber(puzzleNum);
             
-            const dateString = this.getDateString(date);
-            const article = this.getArticleForDate(dateString);
+            // Format date
+            const date = new Date(dateString + 'T00:00:00');
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const formatted = `${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
             
-            if (article) {
-                const puzzleNumber = this.calculatePuzzleNumber(dateString);
-                // Only include valid puzzle numbers (>= 1)
-                if (puzzleNumber < 1) continue;
-                
-                const isCompleted = this.isCompleted(dateString);
-                const isToday = dateString === this.currentDateString;
-                
-                archiveItems.push({
-                    dateString,
-                    date,
-                    puzzleNumber,
-                    article,
-                    isCompleted,
-                    isToday
-                });
-            }
+            // Check if completed
+            const completed = this.isCompleted(dateString);
+            
+            puzzles.push({
+                num: puzzleNum,
+                date: dateString,
+                title: article.title,
+                formatted: formatted,
+                completed: completed
+            });
         }
         
-        // Render archive items
-        archiveList.innerHTML = archiveItems.map(item => {
-            const months = ['January', 'February', 'March', 'April', 'May', 'June', 
-                           'July', 'August', 'September', 'October', 'November', 'December'];
-            const formattedDate = `${months[item.date.getMonth()]} ${item.date.getDate()}, ${item.date.getFullYear()}`;
-            
-            return `
-                <div class="archive-item ${item.isCompleted ? 'completed' : ''}" data-date="${item.dateString}">
-                    <div>
-                        <div class="archive-item-date">#${item.puzzleNumber} - ${formattedDate}${item.isToday ? ' (Today)' : ''}</div>
-                        <div class="archive-item-title">${item.article.title}</div>
-                    </div>
-                    ${item.isCompleted ? '<div class="archive-item-status">✓</div>' : ''}
-                </div>
-            `;
-        }).join('');
+        // Render (newest first)
+        archiveList.innerHTML = puzzles.reverse().map(p => `
+            <div class="archive-item ${p.completed ? 'completed' : ''}" data-date="${p.date}">
+                <span class="archive-number">#${p.num}</span>
+                <span class="archive-title">${p.title}</span>
+                <span class="archive-date">${p.formatted}</span>
+            </div>
+        `).join('');
         
-        // Add click handlers
-        archiveList.querySelectorAll('.archive-item').forEach(item => {
-            item.addEventListener('click', () => {
-                const dateString = item.dataset.date;
+        // Click handler
+        archiveList.querySelectorAll('.archive-item').forEach(el => {
+            el.addEventListener('click', () => {
+                const date = el.dataset.date;
                 this.closeArchiveModal();
-                this.loadDailyGame(dateString);
-                this.updateDailyInfo();
+                this.loadDailyGame(date);
             });
         });
         
