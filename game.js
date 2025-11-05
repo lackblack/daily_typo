@@ -1748,15 +1748,21 @@ class DailyTypoGame {
         // Build share text (minimal, per spec)
         let shareText = `${headline}\n\n`;
         
-        // Add elapsed time if available - put it on same line as "Found the typo."
-        if (this.elapsedTime) {
-            const elapsedSeconds = Math.floor(this.elapsedTime / 1000);
-            const minutes = Math.floor(elapsedSeconds / 60);
-            const seconds = elapsedSeconds % 60;
-            const timeStr = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
-            shareText += `Found the typo. ⏱ ${timeStr}\n\n`;
+        // Check if user won or lost
+        if (this.lastGameResult === 'win') {
+            // Add elapsed time if available - put it on same line as "Found the typo."
+            if (this.elapsedTime) {
+                const elapsedSeconds = Math.floor(this.elapsedTime / 1000);
+                const minutes = Math.floor(elapsedSeconds / 60);
+                const seconds = elapsedSeconds % 60;
+                const timeStr = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+                shareText += `Found the typo. ⏱ ${timeStr}\n\n`;
+            } else {
+                shareText += `Found the typo.\n\n`;
+            }
         } else {
-            shareText += `Found the typo.\n\n`;
+            // User didn't find the typo
+            shareText += `I didn't find the typo. Can you?\n\n`;
         }
         
         // Prefer production URL; fallback to current URL if not available
