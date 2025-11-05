@@ -1771,11 +1771,12 @@ class DailyTypoGame {
         // Add URL to text (single instance) - reduced spacing
         const shareTextWithUrl = `${shareText}${shareUrl}`;
         
-        // Detect if mobile device (has touch screen and is small screen)
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
-                        (window.matchMedia && window.matchMedia('(max-width: 768px)').matches && 'ontouchstart' in window);
+        // Detect if actual mobile device (phone/tablet) - be strict to avoid desktop triggering
+        // Only check user agent for real mobile devices, ignore screen size/touch as desktop can have those
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
         
-        // Use Web Share API only on mobile - desktop always copies to clipboard
+        // Use Web Share API only on actual mobile devices - desktop always copies to clipboard
+        // Even if desktop browser supports Web Share API, we want clipboard copy for consistency
         if (isMobile && navigator.share) {
             navigator.share({
                 title: 'The Daily Typo',
