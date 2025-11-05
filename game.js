@@ -296,9 +296,9 @@ class DailyTypoGame {
         const puzzleNumber = this.calculatePuzzleNumber(dateString);
         const date = new Date(dateString);
         
-        // Format date (newspaper style: NOVEMBER 4, 2024)
-        const months = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 
-                       'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
+        // Format date (newspaper style: NOV 4, 2024)
+        const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 
+                       'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
         const year = date.getFullYear();
         const formattedDate = `${months[date.getMonth()]} ${date.getDate()}, ${year}`;
         
@@ -1755,14 +1755,14 @@ class DailyTypoGame {
             const minutes = Math.floor(elapsedSeconds / 60);
             const seconds = elapsedSeconds % 60;
             const timeStr = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
-            shareText += `⏱ ${timeStr} (time it took to solve)\n\n`;
+            shareText += `⏱ ${timeStr}\n\n`;
         }
         
         // Prefer production URL; fallback to current URL if not available
         const shareUrl = 'https://dailytypo.com/';
         
-        // Footer with puzzle number and URL
-        shareText += `The Daily Typo #${puzzleNumber} ${shareUrl}`;
+        // Footer with a single URL only
+        shareText += `${shareUrl}`;
         
         // Try Web Share API first (mobile browsers)
         // For WhatsApp, include everything in text field for better compatibility

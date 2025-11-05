@@ -310,9 +310,10 @@ body::before {
 #daily-date {
     color: var(--dark-green);
     font-weight: 400;
-    font-size: 0.9rem;
-    opacity: 0.8;
-    letter-spacing: 0.5px;
+    font-size: 0.8rem;
+    opacity: 0.7;
+    font-style: italic;
+    letter-spacing: 0.8px;
     font-family: 'Georgia', serif;
 }
 
@@ -516,6 +517,10 @@ body::before {
     justify-content: center;
     padding: 0;
     font-family: inherit;
+    z-index: 2002;
+    pointer-events: auto;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .close-modal-btn:hover {
@@ -1523,7 +1528,7 @@ html {
     }
     
     #daily-date {
-        font-size: 0.8rem;
+        font-size: 0.75rem;
     }
     
     .established {
@@ -1629,6 +1634,15 @@ html {
     .completion-modal .modal-content h2,
     .archive-modal .modal-content h2 {
         font-size: 1.8rem;
+    }
+    
+    .close-modal-btn {
+        width: 44px;
+        height: 44px;
+        top: 10px;
+        right: 10px;
+        font-size: 2.2rem;
+        opacity: 0.9;
     }
     
     .archive-item {
