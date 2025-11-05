@@ -12,6 +12,8 @@ class DailyTypoGame {
         this.selectedWords = [];
         this.articlesConfig = null;
         this.lastGameResult = null; // Track last game result: 'win', 'loss', or null
+        this.gameStartTime = null; // Track when game started for timer
+        this.elapsedTime = null; // Store elapsed time when game completes
         
         // Daily system
         this.currentDate = new Date();
@@ -308,12 +310,8 @@ class DailyTypoGame {
         const dateEl = document.getElementById('daily-date');
         if (dateEl) dateEl.textContent = formattedDate;
         
-        // Update tries
-        const mistakesTextEl = document.getElementById('mistakes-left-text');
-        if (mistakesTextEl) {
-            const tries = Math.max(0, this.triesRemaining - 1);
-            mistakesTextEl.textContent = `${tries} ${tries !== 1 ? 'TRIES' : 'TRY'} LEFT`;
-        }
+        // Update tries display with icons
+        this.updateTriesDisplay();
         
         // Update newspaper date in top-left corner
         this.updateNewspaperDate();
@@ -1312,6 +1310,9 @@ class DailyTypoGame {
             this.updateMistakesDisplay();
             this.updateDailyInfo();
             
+            // Animate pencil icon bounce
+            this.animatePencilIcon();
+            
             // Show "Wrong" indicator briefly
             this.showWrongIndicator();
             
@@ -1330,9 +1331,76 @@ class DailyTypoGame {
         }, 500);
     }
     
+    updateTriesDisplay() {
+        const container = document.getElementById('pencil-icons-container');
+        const textEl = document.getElementById('mistakes-left-text');
+        if (!container) return;
+        
+        // Calculate tries left (triesRemaining - 1 = tries left)
+        const triesLeft = Math.max(0, this.triesRemaining - 1);
+        
+        // Clear existing icons
+        container.innerHTML = '';
+        
+        // Create pencil icon SVG
+        const createPencilIcon = () => {
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.setAttribute('class', 'pencil-icon');
+            svg.setAttribute('width', '14');
+            svg.setAttribute('height', '14');
+            svg.setAttribute('viewBox', '0 0 24 24');
+            svg.setAttribute('fill', 'none');
+            svg.setAttribute('stroke', 'currentColor');
+            svg.setAttribute('stroke-width', '2');
+            svg.setAttribute('stroke-linecap', 'round');
+            svg.setAttribute('stroke-linejoin', 'round');
+            
+            const path1 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path1.setAttribute('d', 'M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7');
+            
+            const path2 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path2.setAttribute('d', 'M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z');
+            
+            svg.appendChild(path1);
+            svg.appendChild(path2);
+            return svg;
+        };
+        
+        // Create icons for remaining tries (max 2)
+        const maxTriesToShow = 2;
+        for (let i = 0; i < maxTriesToShow; i++) {
+            const icon = createPencilIcon();
+            if (i >= triesLeft) {
+                icon.classList.add('faded');
+            }
+            container.appendChild(icon);
+        }
+        
+        // Update text - stays constant
+        if (textEl) {
+            textEl.textContent = 'attempts remaining';
+        }
+    }
+    
+    animatePencilIcon() {
+        const pencilIcons = document.querySelectorAll('.pencil-icon:not(.faded)');
+        pencilIcons.forEach((pencilIcon) => {
+            // Remove any existing bounce class
+            pencilIcon.classList.remove('bounce');
+            // Force reflow to ensure the class removal is processed
+            void pencilIcon.offsetWidth;
+            // Add bounce class to trigger animation
+            pencilIcon.classList.add('bounce');
+            // Remove the class after animation completes
+            setTimeout(() => {
+                pencilIcon.classList.remove('bounce');
+            }, 500);
+        });
+    }
+    
     updateMistakesDisplay() {
-        // Mistake dots removed - function kept for compatibility
-        // Mistakes are now shown in the daily info bar
+        // Update tries display with icons
+        this.updateTriesDisplay();
     }
     
     updateLevelDisplay() {
@@ -1534,6 +1602,31 @@ class DailyTypoGame {
             completionMessage.textContent = `The error was: ${correctionText}`;
         }
         
+        // Calculate and display elapsed time
+        if (isWin && this.gameStartTime) {
+            const elapsedMs = Date.now() - this.gameStartTime;
+            this.elapsedTime = elapsedMs;
+            const elapsedSeconds = Math.floor(elapsedMs / 1000);
+            const minutes = Math.floor(elapsedSeconds / 60);
+            const seconds = elapsedSeconds % 60;
+            
+            const timerEl = document.getElementById('completion-timer');
+            if (timerEl) {
+                let timeText;
+                if (minutes > 0) {
+                    timeText = `${minutes}m ${seconds}s`;
+                } else {
+                    timeText = `${seconds}s`;
+                }
+                timerEl.innerHTML = `<span class="timer-label">Solved in</span> <span class="timer-value">${timeText}</span>`;
+            }
+        } else {
+            const timerEl = document.getElementById('completion-timer');
+            if (timerEl) {
+                timerEl.textContent = '';
+            }
+        }
+        
         // Update Wikipedia link
         const wikipediaLink = document.getElementById('wikipedia-link');
         if (wikipediaLink && this.currentArticle) {
@@ -1656,30 +1749,44 @@ class DailyTypoGame {
         let shareText = `${headline} #${puzzleNumber}\n\n`;
         shareText += `Found the typo, truth is saved ✍️\n\n`;
         
+        // Add elapsed time if available
+        if (this.elapsedTime) {
+            const elapsedSeconds = Math.floor(this.elapsedTime / 1000);
+            const minutes = Math.floor(elapsedSeconds / 60);
+            const seconds = elapsedSeconds % 60;
+            if (minutes > 0) {
+                shareText += `⏱️ ${minutes}m ${seconds}s\n\n`;
+            } else {
+                shareText += `⏱️ ${seconds}s\n\n`;
+            }
+        }
+        
         if (streak > 0) {
             const dayWord = streak === 1 ? 'day' : 'days';
             shareText += `🔥 ${streak} ${dayWord} streak\n\n`;
         }
         
+        const shareUrl = window.location.href.split('?')[0]; // Remove query params
+        
+        // Include URL in text for better WhatsApp compatibility
+        shareText += `${shareUrl}\n\n`;
         shareText += `The Daily Typo`;
         
-        const shareUrl = window.location.href.split('?')[0]; // Remove query params
-        const shareTextWithUrl = `${shareText}\n\n${shareUrl}`;
-        
         // Try Web Share API first (mobile browsers)
+        // For WhatsApp, include everything in text field for better compatibility
         if (navigator.share) {
             navigator.share({
                 title: 'The Daily Typo',
-                text: shareText,
-                url: shareUrl
+                text: shareText, // Include URL in text for WhatsApp
+                url: shareUrl // Also provide URL separately for other apps
             }).catch(err => {
                 console.log('Error sharing:', err);
                 // Fallback to clipboard with URL included
-                this.copyToClipboard(shareTextWithUrl);
+                this.copyToClipboard(shareText);
             });
         } else {
             // Fallback to clipboard with URL included
-            this.copyToClipboard(shareTextWithUrl);
+            this.copyToClipboard(shareText);
         }
     }
     
@@ -1854,6 +1961,7 @@ class DailyTypoGame {
         this.selectedWords = [];
         this.clearSelection();
         this.updateMistakesDisplay();
+        this.gameStartTime = Date.now(); // Start timer when game loads
         
         // Safely update feedback element if it exists
         const feedbackDiv = document.getElementById('feedback');
