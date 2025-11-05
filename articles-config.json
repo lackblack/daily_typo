@@ -8,12 +8,12 @@
       "thumbnail": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/Mount_Everest_as_seen_from_Drukair2_PLW_edit.jpg/330px-Mount_Everest_as_seen_from_Drukair2_PLW_edit.jpg",
       "description": "Earth's highest mountain above sea level, located in the Mahalangur Himal sub-range of the Himalayas",
       "originalWord": "8,848",
-      "wrongWord": "5,548",
+      "wrongWord": "2,548",
       "errorType": "word",
       "replacements": [
         {
           "original": "8,848",
-          "replacement": "5,548"
+          "replacement": "2,548"
         }
       ]
     },
@@ -24,12 +24,12 @@
       "thumbnail": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Einstein_1921_by_F_Schmutzer_-_restoration.jpg/330px-Einstein_1921_by_F_Schmutzer_-_restoration.jpg",
       "description": "German-born theoretical physicist",
       "originalWord": "German-born",
-      "wrongWord": "Swiss-born",
+      "wrongWord": "Australian-born",
       "errorType": "word",
       "replacements": [
         {
           "original": "German-born",
-          "replacement": "Swiss-born"
+          "replacement": "Australian-born"
         }
       ]
     },
@@ -56,12 +56,12 @@
       "thumbnail": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/Flag_of_Finland.svg/langsimple-330px-Flag_of_Finland.svg.png",
       "description": "country in Northern Europe",
       "originalWord": "Fennoscandia.",
-      "wrongWord": "Scandinavia",
+      "wrongWord": "Scandinavia.",
       "errorType": "word",
       "replacements": [
         {
           "original": "Fennoscandia.",
-          "replacement": "Scandinavia"
+          "replacement": "Scandinavia."
         }
       ]
     },
@@ -88,12 +88,12 @@
       "thumbnail": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0b/Cat_poster_1.jpg/330px-Cat_poster_1.jpg",
       "description": "small domesticated carnivorous mammal",
       "originalWord": "10,000",
-      "wrongWord": "1,000",
+      "wrongWord": "100",
       "errorType": "word",
       "replacements": [
         {
           "original": "10,000",
-          "replacement": "1,000"
+          "replacement": "100"
         }
       ]
     },
@@ -109,7 +109,7 @@
       "replacements": [
         {
           "original": "Edge,",
-          "replacement": "Chrome"
+          "replacement": "Chrome,"
         }
       ]
     },
@@ -152,7 +152,7 @@
       "thumbnail": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/54/Infobox_collage_for_WWII.PNG/330px-Infobox_collage_for_WWII.PNG",
       "description": "1939–1945 global conflict",
       "originalWord": "1937,",
-      "wrongWord": "1945",
+      "wrongWord": "1837,",
       "errorType": "word",
       "replacements": [
         {
