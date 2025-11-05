@@ -1737,7 +1737,7 @@ class DailyTypoGame {
         
         // Random variations of newspaper headlines
         const headlines = [
-            '📰 THE DAILY TYPO',
+            
             '📰 THIS JUST IN!',
             '📰 EXTRA EXTRA!',
             '📰 BREAKING NEWS!',
@@ -1745,32 +1745,24 @@ class DailyTypoGame {
         ];
         const headline = headlines[Math.floor(Math.random() * headlines.length)];
         
-        // Build share text with newspaper style
-        let shareText = `${headline} #${puzzleNumber}\n\n`;
-        shareText += `Found the typo, truth is saved ✍️\n\n`;
+        // Build share text (minimal, per spec)
+        let shareText = `${headline}\n\n`;
+        shareText += `Found the typo.\n\n`;
         
         // Add elapsed time if available
         if (this.elapsedTime) {
             const elapsedSeconds = Math.floor(this.elapsedTime / 1000);
             const minutes = Math.floor(elapsedSeconds / 60);
             const seconds = elapsedSeconds % 60;
-            if (minutes > 0) {
-                shareText += `⏱️ ${minutes}m ${seconds}s\n\n`;
-            } else {
-                shareText += `⏱️ ${seconds}s\n\n`;
-            }
+            const timeStr = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+            shareText += `⏱ ${timeStr} (time it took to solve)\n\n`;
         }
         
-        if (streak > 0) {
-            const dayWord = streak === 1 ? 'day' : 'days';
-            shareText += `🔥 ${streak} ${dayWord} streak\n\n`;
-        }
+        // Prefer production URL; fallback to current URL if not available
+        const shareUrl = 'https://dailytypo.com/';
         
-        const shareUrl = window.location.href.split('?')[0]; // Remove query params
-        
-        // Include URL in text for better WhatsApp compatibility
-        shareText += `${shareUrl}\n\n`;
-        shareText += `The Daily Typo`;
+        // Footer with puzzle number and URL
+        shareText += `The Daily Typo #${puzzleNumber} ${shareUrl}`;
         
         // Try Web Share API first (mobile browsers)
         // For WhatsApp, include everything in text field for better compatibility
