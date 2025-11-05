@@ -104,7 +104,7 @@
       "thumbnail": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Building92microsoft.jpg/330px-Building92microsoft.jpg",
       "description": "American multinational technology corporation",
       "originalWord": "Edge,",
-      "wrongWord": "Chrome",
+      "wrongWord": "Chrome,",
       "errorType": "word",
       "replacements": [
         {
