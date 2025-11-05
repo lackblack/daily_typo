@@ -1616,20 +1616,23 @@ class DailyTypoGame {
         
         shareText += `The Daily Typo`;
         
+        const shareUrl = window.location.href.split('?')[0]; // Remove query params
+        const shareTextWithUrl = `${shareText}\n\n${shareUrl}`;
+        
         // Try Web Share API first (mobile browsers)
         if (navigator.share) {
             navigator.share({
                 title: 'The Daily Typo',
                 text: shareText,
-                url: window.location.href.split('?')[0] // Remove query params
+                url: shareUrl
             }).catch(err => {
                 console.log('Error sharing:', err);
-                // Fallback to clipboard
-                this.copyToClipboard(shareText);
+                // Fallback to clipboard with URL included
+                this.copyToClipboard(shareTextWithUrl);
             });
         } else {
-            // Fallback to clipboard
-            this.copyToClipboard(shareText);
+            // Fallback to clipboard with URL included
+            this.copyToClipboard(shareTextWithUrl);
         }
     }
     
