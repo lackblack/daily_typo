@@ -269,9 +269,8 @@ class DailyTypoGame {
     }
     
     updateNewspaperDate() {
-        const rawDateString = this.selectedDate || this.currentDateString;
-        const dateString = this.getValidGameDate(rawDateString);
-        const date = new Date(dateString);
+        // Always use today's date for the newspaper date, regardless of article date
+        const date = new Date();
         
         // Format date in newspaper style: MONDAY, OCTOBER 17, 2024
         const days = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
