@@ -1105,7 +1105,7 @@ body::before {
 }
 
 .article-content .word-clickable:hover {
-    background: #f0f0f0;
+    background: #d0d0d0;
 }
 
 .article-content .word-clickable.word-selected {
