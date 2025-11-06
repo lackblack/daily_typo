@@ -499,7 +499,7 @@ class DailyTypoGame {
         
         const donateBtn = document.getElementById('donate-btn');
         if (donateBtn) donateBtn.addEventListener('click', () => {
-            window.open('https://ko-fi.com/artbyjoonas', '_blank');
+            window.open('https://ko-fi.com/dailytypo', '_blank');
         });
         
         // Hamburger menu
@@ -552,7 +552,7 @@ class DailyTypoGame {
                 donateLink.addEventListener('click', (e) => {
                     e.preventDefault();
                     menuDropdown.style.display = 'none';
-                    window.open('https://ko-fi.com/artbyjoonas', '_blank');
+                    window.open('https://ko-fi.com/dailytypo', '_blank');
                 });
             }
         }
