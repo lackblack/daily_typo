@@ -269,7 +269,7 @@ body::before {
     letter-spacing: 1px;
     opacity: 0.75;
     font-family: 'Georgia', serif;
-    text-transform: uppercase;
+    text-transform: none;
 }
 
 /* Daily Info Bar */
