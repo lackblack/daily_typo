@@ -2,10 +2,10 @@
   "version": "2.0",
   "articles": [
     {
-      "title": "Mount Everest",
-      "wrong": "2,548",
-      "correct": "8,848",
-      "category": "Geography"
+      "title": "Hello world program",
+      "wrong": "incorrectly",
+      "correct": "correctly",
+      "category": "Programming languages"
     },
     {
       "title": "Albert Einstein",
