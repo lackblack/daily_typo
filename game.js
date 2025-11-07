@@ -75,6 +75,12 @@ class DailyTypoGame {
     }
     
     getArticleForDate(dateString) {
+        // First check scheduled articles for this specific date
+        if (this.articlesConfig && this.articlesConfig.scheduled && this.articlesConfig.scheduled[dateString]) {
+            return this.articlesConfig.scheduled[dateString];
+        }
+        
+        // Fallback to cycling through articles array
         if (!this.articlesConfig || !this.articlesConfig.articles || this.articlesConfig.articles.length === 0) {
             return null;
         }
@@ -187,15 +193,46 @@ class DailyTypoGame {
             
             if (response.ok) {
                 this.articlesConfig = await response.json();
-                console.log(`✓ Loaded ${this.articlesConfig.articles.length} articles`);
+                
+                // Ensure version 2.0 structure
+                if (!this.articlesConfig.version) {
+                    this.articlesConfig.version = "2.0";
+                }
+                if (!this.articlesConfig.articles) {
+                    this.articlesConfig.articles = [];
+                }
+                if (!this.articlesConfig.scheduled) {
+                    this.articlesConfig.scheduled = {};
+                }
+                
             } else {
                 console.error(`⚠ Failed to load articles-config.json: HTTP ${response.status}`);
-                this.articlesConfig = { version: "1.0", articles: [] };
+                this.articlesConfig = { version: "2.0", articles: [], scheduled: {} };
             }
         } catch (error) {
             console.error('Error loading articles-config.json:', error);
-            this.articlesConfig = { version: "1.0", articles: [] };
+            this.articlesConfig = { version: "2.0", articles: [], scheduled: {} };
         }
+    }
+    
+    applyWordReplacement(text, correctWord, wrongWord) {
+        // Escape special regex characters in the correct word
+        const escapedCorrect = correctWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        
+        // Try to match with case sensitivity first (exact match)
+        if (text.includes(correctWord)) {
+            return text.replace(new RegExp(escapedCorrect, 'g'), wrongWord);
+        }
+        
+        // If not found, try case-insensitive match
+        const regex = new RegExp(escapedCorrect, 'gi');
+        return text.replace(regex, (match) => {
+            // Preserve case of original match
+            if (match[0] === match[0].toUpperCase()) {
+                return wrongWord.charAt(0).toUpperCase() + wrongWord.slice(1).toLowerCase();
+            }
+            return wrongWord.toLowerCase();
+        });
     }
     
     async loadDailyGame(dateString = null) {
@@ -210,7 +247,12 @@ class DailyTypoGame {
             const targetDate = this.getValidGameDate(rawDate);
             this.selectedDate = targetDate;
             
-            if (!this.articlesConfig || !this.articlesConfig.articles || this.articlesConfig.articles.length === 0) {
+            // Check if we have any articles (either in array or scheduled)
+            const hasArticles = this.articlesConfig && 
+                               ((this.articlesConfig.articles && this.articlesConfig.articles.length > 0) ||
+                                (this.articlesConfig.scheduled && Object.keys(this.articlesConfig.scheduled).length > 0));
+            
+            if (!hasArticles) {
                 this.showLoading(false);
                 this.showNoArticlesMessage();
                 return;
@@ -224,31 +266,70 @@ class DailyTypoGame {
                 return;
             }
             
-            console.log('Loading article for date:', targetDate, savedArticle.title);
+            let articleData = null;
+            let extract = null;
+            let category = 'General Knowledge';
+            let thumbnail = null;
+            let description = null;
+            
+            // Check if this is new format (version 2.0) - just title + wrong/correct
+            const isNewFormat = savedArticle.wrong && savedArticle.correct && !savedArticle.extract;
+            
+            if (isNewFormat) {
+                // New format: fetch article from Wikipedia
+                articleData = await this.fetchWikipediaArticle(savedArticle.title);
+                
+                if (!articleData) {
+                    this.showLoading(false);
+                    alert('Failed to fetch article from Wikipedia. Please try again.');
+                    return;
+                }
+                
+                extract = articleData.extract;
+                // Use category from JSON if provided, otherwise use auto-detected category, fallback to General Knowledge
+                category = savedArticle.category || articleData.category || 'General Knowledge';
+                thumbnail = articleData.thumbnail || null;
+                description = articleData.description || null;
+                
+                // Apply replacement: replace correct word with wrong word
+                extract = this.applyWordReplacement(extract, savedArticle.correct, savedArticle.wrong);
+                
+                // Set error tracking
+                this.originalWord = savedArticle.correct;
+                this.errorWord = savedArticle.wrong;
+                this.errorWords = [savedArticle.wrong.toLowerCase()];
+                this.originalWords = [savedArticle.correct.toLowerCase()];
+                this.errorType = 'word';
+            } else {
+                // Old format: article already has extract and error info
+                extract = savedArticle.extract;
+                category = savedArticle.category || 'General Knowledge';
+                thumbnail = savedArticle.thumbnail || null;
+                description = savedArticle.description || null;
+                
+                // Set error tracking
+                if (savedArticle.replacements && savedArticle.replacements.length > 0) {
+                    const replacements = savedArticle.replacements;
+                    this.errorWords = replacements.map(r => r.replacement.toLowerCase());
+                    this.originalWords = replacements.map(r => r.original.toLowerCase());
+                    this.originalWord = replacements[0].original;
+                    this.errorWord = replacements[0].replacement;
+                } else {
+                    this.originalWord = savedArticle.originalWord;
+                    this.errorWord = savedArticle.wrongWord;
+                    this.errorWords = [savedArticle.wrongWord.toLowerCase()];
+                    this.originalWords = [savedArticle.originalWord.toLowerCase()];
+                }
+                this.errorType = savedArticle.errorType || 'word';
+            }
             
             this.currentArticle = {
                 title: savedArticle.title,
-                extract: savedArticle.extract,
-                category: savedArticle.category || 'General Knowledge',
-                thumbnail: savedArticle.thumbnail || null,
-                description: savedArticle.description || null
+                extract: extract,
+                category: category,
+                thumbnail: thumbnail,
+                description: description
             };
-            
-            // Set error tracking
-            if (savedArticle.replacements && savedArticle.replacements.length > 0) {
-                const replacements = savedArticle.replacements;
-                this.errorWords = replacements.map(r => r.replacement.toLowerCase());
-                this.originalWords = replacements.map(r => r.original.toLowerCase());
-                this.originalWord = replacements[0].original;
-                this.errorWord = replacements[0].replacement;
-            } else {
-                this.originalWord = savedArticle.originalWord;
-                this.errorWord = savedArticle.wrongWord;
-                this.errorWords = [savedArticle.wrongWord.toLowerCase()];
-                this.originalWords = [savedArticle.originalWord.toLowerCase()];
-            }
-            
-            this.errorType = savedArticle.errorType || 'word';
             
             // Find the sentence containing the error
             const sentences = this.currentArticle.extract.match(/[^.!?]+[.!?]+/g) || [];
@@ -261,6 +342,15 @@ class DailyTypoGame {
             
             // Update daily info to show reset mistakes counter
             this.updateDailyInfo();
+            
+            // Only show welcome screen for today's article, not for random or archive
+            const isTodaysArticle = targetDate === this.currentDateString;
+            if (isTodaysArticle) {
+                this.showWelcomeScreen();
+            } else {
+                // For random/archive articles, start the game immediately
+                this.startGame();
+            }
             
         } catch (error) {
             console.error('Error in loadDailyGame:', error);
@@ -320,7 +410,6 @@ class DailyTypoGame {
     saveArticlesConfigToStorage() {
         try {
             localStorage.setItem('wikiGameArticles', JSON.stringify(this.articlesConfig));
-            console.log('Articles saved to localStorage');
         } catch (error) {
             console.error('Error saving to localStorage:', error);
         }
@@ -342,114 +431,6 @@ class DailyTypoGame {
         // Auto-save to localStorage (instant, no file dialog)
         this.saveArticlesConfigToStorage();
         return true;
-    }
-    
-    async loadWordReplacements() {
-        try {
-            // Try to load from config file (for local/online deployment)
-            const response = await fetch('word-replacements.json');
-            if (response.ok) {
-                this.wordReplacements = await response.json();
-                this.replacementsLoaded = true;
-                console.log('Word replacements loaded from config');
-                return;
-            }
-        } catch (error) {
-            console.log('Could not load word-replacements.json, using fallback');
-        }
-        
-        // Fallback: Use default replacements
-        this.wordReplacements = this.getDefaultReplacements();
-        this.replacementsLoaded = true;
-    }
-    
-    getDefaultReplacements() {
-        // Default replacements if JSON file is not available
-        return {
-            version: "1.0",
-            categories: {
-                geographic: {
-                    "city": ["town", "village"],
-                    "town": ["city"],
-                    "capital": ["largest"],
-                    "largest": ["smallest"],
-                    "country": ["nation"],
-                    "nation": ["country"],
-                    "river": ["lake"],
-                    "lake": ["river"],
-                    "mountain": ["hill"],
-                    "hill": ["mountain"],
-                    "ocean": ["sea"],
-                    "sea": ["ocean"],
-                    "island": ["peninsula"],
-                    "peninsula": ["island"]
-                },
-                size_quantity: {
-                    "large": ["small"],
-                    "small": ["large"],
-                    "big": ["small"],
-                    "tiny": ["huge"],
-                    "huge": ["tiny"],
-                    "million": ["thousand"],
-                    "thousand": ["million"],
-                    "many": ["few"],
-                    "few": ["many"],
-                    "most": ["least"],
-                    "least": ["most"]
-                },
-                time_periods: {
-                    "century": ["decade"],
-                    "decade": ["century"],
-                    "ancient": ["modern"],
-                    "modern": ["ancient"],
-                    "old": ["new"],
-                    "new": ["old"],
-                    "first": ["last"],
-                    "last": ["first"],
-                    "early": ["late"],
-                    "late": ["early"]
-                },
-                adjectives: {
-                    "famous": ["unknown"],
-                    "unknown": ["famous"],
-                    "important": ["minor"],
-                    "major": ["minor"],
-                    "popular": ["obscure"],
-                    "obscure": ["popular"],
-                    "highest": ["lowest"],
-                    "lowest": ["highest"],
-                    "largest": ["smallest"],
-                    "smallest": ["largest"],
-                    "hot": ["cold"],
-                    "cold": ["hot"],
-                    "long": ["short"],
-                    "short": ["long"],
-                    "high": ["low"],
-                    "low": ["high"]
-                },
-                directions: {
-                    "north": ["south"],
-                    "south": ["north"],
-                    "east": ["west"],
-                    "west": ["east"],
-                    "eastern": ["western"],
-                    "western": ["eastern"],
-                    "northern": ["southern"],
-                    "southern": ["northern"]
-                }
-            },
-            fallbacks: {
-                short_words: ["small", "large", "first", "major"],
-                medium_words: ["ancient", "modern", "popular", "famous"],
-                long_words: ["important", "beautiful", "powerful", "successful"]
-            },
-            number_modifiers: {
-                small_change_percent: [0.15, 0.25],
-                medium_change_percent: [0.20, 0.40],
-                date_change_years_modern: [10, 30],
-                date_change_years_ancient: [20, 50]
-            }
-        };
     }
     
     setupEventListeners() {
@@ -543,7 +524,7 @@ class DailyTypoGame {
                 feelingStuckLink.addEventListener('click', (e) => {
                     e.preventDefault();
                     menuDropdown.style.display = 'none';
-                    alert('Feeling stuck? You can always open Wikipedia and study the article!');
+                    alert('Feeling stuck? You can always open Wikipedia and study the article! :-)');
                 });
             }
             
@@ -574,6 +555,49 @@ class DailyTypoGame {
                 if (feedbackSection) {
                     feedbackSection.classList.toggle('collapsed');
                 }
+            });
+        }
+        
+        // Start game button
+        const startGameBtn = document.getElementById('start-game-btn');
+        if (startGameBtn) {
+            startGameBtn.addEventListener('click', () => this.startGame());
+        }
+        
+        // Welcome screen action buttons
+        const welcomeFeedbackBtn = document.getElementById('welcome-feedback-btn');
+        if (welcomeFeedbackBtn) {
+            welcomeFeedbackBtn.addEventListener('click', async () => {
+                const email = 'feedback@dailytypo.com';
+                try {
+                    await navigator.clipboard.writeText(email);
+                    // Show temporary feedback message
+                    const originalText = welcomeFeedbackBtn.innerHTML;
+                    welcomeFeedbackBtn.innerHTML = `
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                        Email copied
+                    `;
+                    setTimeout(() => {
+                        welcomeFeedbackBtn.innerHTML = originalText;
+                    }, 2000);
+                } catch (err) {
+                    // Fallback if clipboard API fails
+                    alert(`Email copied: ${email}`);
+                }
+            });
+        }
+        
+        const welcomeRandomBtn = document.getElementById('welcome-random-btn');
+        if (welcomeRandomBtn) {
+            welcomeRandomBtn.addEventListener('click', () => {
+                // Hide welcome screen - playRandomArticle will show the game
+                const welcomeScreen = document.getElementById('welcome-screen');
+                if (welcomeScreen) {
+                    welcomeScreen.style.display = 'none';
+                }
+                this.playRandomArticle();
             });
         }
     }
@@ -731,247 +755,6 @@ class DailyTypoGame {
         return fallback;
     }
     
-    injectError(text) {
-        // Simple error injection: replace one word, number, or date with a plausible alternative
-        // Priority: dates → numbers → specific words
-        
-        // Try to find and replace a date/year first (most common and plausible)
-        if (this.injectDateError(text)) {
-            this.errorType = 'sentence'; // Dates are usually in sentences
-            return;
-        }
-        
-        // Try to replace a number with units
-        if (this.injectNumberError(text)) {
-            this.errorType = 'sentence';
-            return;
-        }
-        
-        // Fall back to word replacement
-        this.injectWordError(text);
-    }
-    
-    injectDateError(text) {
-        // Find years (4-digit numbers typically between 1000-2100)
-        const yearPattern = /\b(1[0-9]{3}|20[0-1][0-9])\b/g;
-        const years = text.match(yearPattern);
-        
-        if (years && years.length > 0) {
-            const originalYear = years[Math.floor(Math.random() * years.length)];
-            const originalYearNum = parseInt(originalYear);
-            
-            // Get date change modifiers from config or use defaults
-            let modernRange, ancientRange;
-            if (this.wordReplacements && this.wordReplacements.number_modifiers) {
-                modernRange = this.wordReplacements.number_modifiers.date_change_years_modern || [10, 30];
-                ancientRange = this.wordReplacements.number_modifiers.date_change_years_ancient || [20, 50];
-            } else {
-                modernRange = [10, 30];
-                ancientRange = [20, 50];
-            }
-            
-            // Generate a plausible wrong year
-            let wrongYearNum;
-            if (originalYearNum > 1900) {
-                // For modern years, use configured range
-                const minChange = modernRange[0];
-                const maxChange = modernRange[1];
-                const change = (Math.random() > 0.5 ? 1 : -1) * (minChange + Math.floor(Math.random() * (maxChange - minChange + 1)));
-                wrongYearNum = originalYearNum + change;
-                // Keep in reasonable range
-                if (wrongYearNum < 1900) wrongYearNum = 1900 + Math.floor(Math.random() * 50);
-                if (wrongYearNum > 2025) wrongYearNum = 2025 - Math.floor(Math.random() * 30);
-            } else {
-                // For older years, use configured range
-                const minChange = ancientRange[0];
-                const maxChange = ancientRange[1];
-                const change = (Math.random() > 0.5 ? 1 : -1) * (minChange + Math.floor(Math.random() * (maxChange - minChange + 1)));
-                wrongYearNum = originalYearNum + change;
-            }
-            
-            const wrongYear = wrongYearNum.toString();
-            
-            // Replace first occurrence
-            this.currentArticle.extract = text.replace(originalYear, wrongYear);
-            this.errorWord = wrongYear;
-            this.originalWord = originalYear;
-            this.errorSentence = null; // Will be set to the sentence containing the error
-            
-            // Find the sentence containing this error
-            const sentences = this.currentArticle.extract.match(/[^.!?]+[.!?]+/g) || [];
-            this.errorSentence = sentences.find(s => s.includes(wrongYear)) || '';
-            
-            return true;
-        }
-        
-        return false;
-    }
-    
-    injectNumberError(text) {
-        // Find numbers with units (populations, sizes, distances, etc.)
-        const numberPattern = /\b\d{1,3}[,\s]?\d{0,3}\s*(million|thousand|hundred|km|miles?|meters?|feet?|people|residents?|inhabitants?)\b/gi;
-        const numbers = text.match(numberPattern);
-        
-        if (numbers && numbers.length > 0) {
-            const originalNumber = numbers[Math.floor(Math.random() * numbers.length)];
-            
-            // Extract the numeric part and unit
-            const match = originalNumber.match(/(\d{1,3}[,\s]?\d{0,3})\s*(\w+)/i);
-            if (!match) return false;
-            
-            const numStr = match[1].replace(/[,\s]/g, '');
-            const unit = match[2];
-            const originalNum = parseInt(numStr);
-            
-            // Get number change modifiers from config or use defaults
-            let smallPercentRange, mediumPercentRange;
-            if (this.wordReplacements && this.wordReplacements.number_modifiers) {
-                smallPercentRange = this.wordReplacements.number_modifiers.small_change_percent || [0.15, 0.25];
-                mediumPercentRange = this.wordReplacements.number_modifiers.medium_change_percent || [0.20, 0.40];
-            } else {
-                smallPercentRange = [0.15, 0.25];
-                mediumPercentRange = [0.20, 0.40];
-            }
-            
-            // Generate plausible wrong number
-            let wrongNum;
-            if (originalNum > 1000) {
-                // For large numbers, use small change range
-                const minPercent = smallPercentRange[0];
-                const maxPercent = smallPercentRange[1];
-                const percentChange = minPercent + Math.random() * (maxPercent - minPercent);
-                const change = (Math.random() > 0.5 ? 1 : -1) * Math.floor(originalNum * percentChange);
-                wrongNum = originalNum + change;
-                // Ensure positive
-                if (wrongNum < 1) wrongNum = originalNum + Math.floor(originalNum * 0.2);
-            } else {
-                // For smaller numbers, use medium change range
-                const minPercent = mediumPercentRange[0];
-                const maxPercent = mediumPercentRange[1];
-                const percentChange = minPercent + Math.random() * (maxPercent - minPercent);
-                const change = (Math.random() > 0.5 ? 1 : -1) * Math.floor(originalNum * percentChange);
-                wrongNum = originalNum + change;
-                if (wrongNum < 1) wrongNum = originalNum + Math.floor(originalNum * 0.3);
-            }
-            
-            // Format the wrong number (add commas for readability if large)
-            let wrongNumberStr = wrongNum.toString();
-            if (wrongNum >= 1000) {
-                wrongNumberStr = wrongNum.toLocaleString();
-            }
-            
-            const wrongNumber = wrongNumberStr + ' ' + unit;
-            
-            // Replace first occurrence
-            this.currentArticle.extract = text.replace(originalNumber, wrongNumber);
-            this.errorWord = wrongNumber;
-            this.originalWord = originalNumber;
-            this.errorSentence = null;
-            
-            // Find the sentence containing this error
-            const sentences = this.currentArticle.extract.match(/[^.!?]+[.!?]+/g) || [];
-            this.errorSentence = sentences.find(s => s.includes(wrongNumber)) || '';
-            
-            return true;
-        }
-        
-        return false;
-    }
-    
-    injectWordError(text) {
-        // Find common nouns/adjectives to replace with contextually appropriate alternatives
-        const words = text.match(/\b[A-Z][a-z]+\b|\b[a-z]{4,}\b/g) || [];
-        const mainSubjectWords = this.currentArticle.title.split(/\s+/).map(w => w.toLowerCase());
-        
-        const replaceableWords = words.filter(w => {
-            const lower = w.toLowerCase();
-            return w.length >= 4 && 
-                   !mainSubjectWords.includes(lower) &&
-                   !['the', 'that', 'this', 'with', 'from', 'their', 'there', 'these', 'those', 'which', 'where', 'when'].includes(lower);
-        });
-        
-        if (replaceableWords.length === 0) {
-            // If no words found, try a simple number replacement
-            const simpleNumberPattern = /\b\d{2,3}\b/;
-            const simpleNumber = text.match(simpleNumberPattern);
-            if (simpleNumber) {
-                const originalNum = parseInt(simpleNumber[0]);
-                const wrongNum = originalNum + (Math.random() > 0.5 ? 10 : -10);
-                this.currentArticle.extract = text.replace(simpleNumber[0], wrongNum.toString());
-                this.errorWord = wrongNum.toString();
-                this.originalWord = simpleNumber[0];
-                this.errorType = 'sentence';
-                
-                const sentences = this.currentArticle.extract.match(/[^.!?]+[.!?]+/g) || [];
-                this.errorSentence = sentences.find(s => s.includes(wrongNum.toString())) || '';
-                return;
-            }
-            return;
-        }
-        
-        const randomIndex = Math.floor(Math.random() * replaceableWords.length);
-        this.originalWord = replaceableWords[randomIndex];
-        
-        // Generate a contextually appropriate wrong word
-        this.errorWord = this.generateWrongWord(this.originalWord);
-        
-        // Replace only the FIRST occurrence of the word (case-sensitive for first letter)
-        const wordRegex = new RegExp(`\\b${this.originalWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
-        this.currentArticle.extract = text.replace(wordRegex, match => {
-            // Preserve case
-            if (match[0] === match[0].toUpperCase()) {
-                return this.errorWord.charAt(0).toUpperCase() + this.errorWord.slice(1);
-            }
-            return this.errorWord.toLowerCase();
-        });
-        
-        this.errorType = 'word';
-        
-        // Find the sentence containing this error
-        const sentences = this.currentArticle.extract.match(/[^.!?]+[.!?]+/g) || [];
-        this.errorSentence = sentences.find(s => s.includes(this.errorWord)) || '';
-    }
-    
-    generateWrongWord(original) {
-        // Wait for replacements to be loaded if not ready yet
-        if (!this.replacementsLoaded || !this.wordReplacements) {
-            // Use simple fallback if config not loaded
-            const simpleFallbacks = ['small', 'large', 'first', 'major', 'ancient', 'modern'];
-            return simpleFallbacks[Math.floor(Math.random() * simpleFallbacks.length)];
-        }
-        
-        const lowerOriginal = original.toLowerCase();
-        
-        // Search through all categories for a match
-        for (const categoryName in this.wordReplacements.categories) {
-            const category = this.wordReplacements.categories[categoryName];
-            if (category[lowerOriginal] && category[lowerOriginal].length > 0) {
-                // Pick a random replacement from the array
-                const replacements = category[lowerOriginal];
-                return replacements[Math.floor(Math.random() * replacements.length)];
-            }
-        }
-        
-        // If no match found, use fallback based on word length
-        const length = original.length;
-        let fallbackArray;
-        
-        if (length <= 4) {
-            fallbackArray = this.wordReplacements.fallbacks.short_words;
-        } else if (length <= 6) {
-            fallbackArray = this.wordReplacements.fallbacks.medium_words;
-        } else {
-            fallbackArray = this.wordReplacements.fallbacks.long_words;
-        }
-        
-        if (fallbackArray && fallbackArray.length > 0) {
-            return fallbackArray[Math.floor(Math.random() * fallbackArray.length)];
-        }
-        
-        // Ultimate fallback
-        return 'small';
-    }
-    
     displayArticle() {
         document.getElementById('article-title').textContent = this.currentArticle.title;
         
@@ -981,11 +764,6 @@ class DailyTypoGame {
         
         const contentDiv = document.getElementById('article-content');
         let displayText = this.currentArticle.extract;
-        
-        // If hide wrong info is enabled, mask the wrong parts
-        if (this.hideWrongInfo) {
-            displayText = this.maskWrongInfo(displayText);
-        }
         
         const paragraphs = displayText.split(/\n\n+/).filter(p => p.trim());
         
@@ -1007,10 +785,8 @@ class DailyTypoGame {
                 if (/^\s+$/.test(word)) {
                     return word;
                 }
-                // Check if this word is masked (contains ▓ or similar)
-                const isMasked = /[▓█░]/.test(word);
-                const wordClass = isMasked ? 'word-clickable word-masked' : 'word-clickable';
                 // Wrap words in clickable spans without extra spacing
+                const wordClass = 'word-clickable';
                 return `<span class="${wordClass}">${word}</span>`;
             }).join('');
             return `<p>${wrappedWords}</p>`;
@@ -1024,78 +800,6 @@ class DailyTypoGame {
         
         // Add click handlers to words
         this.setupWordClickHandlers();
-    }
-    
-    maskWrongInfo(text) {
-        // Intelligently mask the wrong information while preserving context
-        if (this.errorType === 'word' && this.errorWord && this.originalWord) {
-            // Mask the wrong word, but show its length and first letter as hint
-            const masked = this.createSmartMask(this.errorWord);
-            // Replace all instances of the error word (case-insensitive)
-            const regex = new RegExp(`\\b${this.errorWord}\\b`, 'gi');
-            return text.replace(regex, match => {
-                // Preserve case
-                if (match[0] === match[0].toUpperCase()) {
-                    return masked.charAt(0).toUpperCase() + masked.slice(1);
-                }
-                return masked;
-            });
-        } else if (this.errorType === 'sentence' && this.errorSentence) {
-            // For sentences, mask the key wrong facts (dates, numbers, specific wrong words)
-            let masked = this.errorSentence;
-            
-            // Mask dates (keep structure but hide exact numbers)
-            masked = masked.replace(/\b\d{3,4}\b/g, (match) => {
-                const num = parseInt(match);
-                // Show approximate range as hint with masking
-                if (num > 1900) return '▓▓▓▓'; // Year - 4 chars
-                if (num > 100) return '▓▓▓'; // Large number - 3 chars
-                return '▓▓'; // Small number - 2 chars
-            });
-            
-            // Mask numbers with units (keep unit visible as hint)
-            masked = masked.replace(/\b\d{1,3}[,\s]?\d{0,3}\s*(million|thousand|hundred|km|miles?)\b/gi, (match) => {
-                const unit = match.match(/(million|thousand|hundred|km|miles?)/i)?.[0] || '';
-                const digits = match.match(/\d/g);
-                const numDigits = digits ? digits.length : 3;
-                return '▓'.repeat(Math.min(numDigits, 5)) + ' ' + unit;
-            });
-            
-            // Find specific wrong words from similar articles and mask them
-            if (this.errorWord) {
-                const wordRegex = new RegExp(`\\b${this.errorWord}\\b`, 'gi');
-                masked = masked.replace(wordRegex, match => {
-                    const masked = this.createSmartMask(this.errorWord);
-                    if (match[0] === match[0].toUpperCase()) {
-                        return masked.charAt(0).toUpperCase() + masked.slice(1);
-                    }
-                    return masked;
-                });
-            }
-            
-            // Replace the sentence in the text
-            return text.replace(this.errorSentence, masked);
-        }
-        
-        return text;
-    }
-    
-    createSmartMask(word) {
-        // Create a smart mask that preserves some information as hint
-        const length = word.length;
-        const firstLetter = word[0].toUpperCase();
-        const lastLetter = word[word.length - 1].toLowerCase();
-        
-        // Create mask with first letter visible, rest masked
-        // This gives a hint while hiding the wrong info
-        if (length <= 3) {
-            return firstLetter + '▓'.repeat(Math.max(1, length - 1));
-        } else if (length <= 6) {
-            return firstLetter + '▓'.repeat(length - 2) + lastLetter;
-        } else {
-            // For longer words, show first 2 letters and last letter
-            return word.substring(0, 2) + '▓'.repeat(Math.max(1, length - 3)) + lastLetter;
-        }
     }
     
     setupWordClickHandlers() {
@@ -1159,18 +863,11 @@ class DailyTypoGame {
             return w.length > 0 && w.replace(/[^\w]/g, '').length > 0;
         }).map(w => w.replace(/[^\w]/g, '')); // Remove any remaining punctuation
         
-        console.log('Guess:', guess);
-        console.log('Guess words:', guessWords);
-        
         if (this.errorType === 'word') {
             // Support multiple error words if available
             const errorWords = this.errorWords || [this.errorWord.toLowerCase()];
             const originalWords = this.originalWords || [this.originalWord.toLowerCase()];
             
-            console.log('Error words (wrong words in text):', errorWords);
-            console.log('Original words (correct words):', originalWords);
-            console.log('Error word:', this.errorWord);
-            console.log('Original word:', this.originalWord);
             
             // Normalize error and original words (remove punctuation)
             const normalizedErrorWords = errorWords.map(ew => ew.replace(/[^\w]/g, '').toLowerCase());
@@ -1189,7 +886,6 @@ class DailyTypoGame {
                 const matchesError = normalizedErrorWords.some(ew => {
                     // Exact match is best
                     if (normalizedGw === ew) {
-                        console.log(`✓ Exact match: "${normalizedGw}" matches wrong word "${ew}"`);
                         return true;
                     }
                     // Only allow substring match if one is significantly shorter than the other
@@ -1200,7 +896,6 @@ class DailyTypoGame {
                     // the length difference is reasonable (not more than 2 chars)
                     if (minLength >= 3 && lengthDiff <= 2) {
                         if (normalizedGw.includes(ew) || ew.includes(normalizedGw)) {
-                            console.log(`✓ Substring match: "${normalizedGw}" matches wrong word "${ew}"`);
                             return true;
                         }
                     }
@@ -1211,7 +906,6 @@ class DailyTypoGame {
                 const matchesOriginal = normalizedOriginalWords.some(ow => {
                     // Exact match means wrong selection
                     if (normalizedGw === ow) {
-                        console.log(`✗ Incorrect: "${normalizedGw}" matches correct word "${ow}" (should not be selected)`);
                         return true;
                     }
                     // Substring match with same rules
@@ -1219,7 +913,6 @@ class DailyTypoGame {
                     const minLength = Math.min(normalizedGw.length, ow.length);
                     if (minLength >= 3 && lengthDiff <= 2) {
                         if (normalizedGw.includes(ow) || ow.includes(normalizedGw)) {
-                            console.log(`✗ Incorrect: "${normalizedGw}" matches correct word "${ow}" (should not be selected)`);
                             return true;
                         }
                     }
@@ -1232,12 +925,9 @@ class DailyTypoGame {
                     incorrectMatches++;
                 } else {
                     // This word doesn't match any wrong or correct word - it's an extra word
-                    console.log(`✗ Extra word selected: "${normalizedGw}" (not a wrong word)`);
                     incorrectMatches++; // Count extra words as incorrect
                 }
             });
-            
-            console.log(`Selected words: ${guessWords.length}, Correct matches: ${correctMatches}, Incorrect matches: ${incorrectMatches}`);
             
             // Win condition: Must select ONLY wrong words, no correct words, no extra words
             // All selected words must match wrong words, and none should match correct words
@@ -1262,23 +952,6 @@ class DailyTypoGame {
                 } else {
                     correctAnswer = `"${this.errorWord}" should be "${this.originalWord}"`;
                 }
-            } else {
-                console.log('Guess failed: must select ONLY wrong word(s), no extra or correct words.');
-            }
-        } else {
-            // Check if guess matches key words from the error sentence
-            const errorWords = this.errorSentence.toLowerCase().split(/\s+/).filter(w => w.length > 3);
-            
-            const matches = errorWords.filter(ew => 
-                guessWords.some(gw => ew.includes(gw) || gw.includes(ew))
-            );
-            
-            // Also check if guess contains significant parts of the error sentence
-            const sentenceMatch = guess.includes(this.errorSentence.toLowerCase().substring(0, 20));
-            
-            if (matches.length >= 2 || guessWords.length >= 3 || sentenceMatch) {
-                isCorrect = true;
-                correctAnswer = `The sentence "${this.errorSentence}" contains an error.`;
             }
         }
         
@@ -1289,7 +962,6 @@ class DailyTypoGame {
         }
         
         if (isCorrect) {
-            console.log('Correct answer! Showing completion modal...');
             this.showCompletionModal(correctAnswer);
             this.updateMistakesDisplay();
         } else {
@@ -1434,14 +1106,11 @@ class DailyTypoGame {
         const errorWords = this.errorWords || [this.errorWord.toLowerCase()];
         const normalizedErrorWords = errorWords.map(ew => ew.replace(/[^\w]/g, '').toLowerCase());
         
-        console.log('Marking words as correct. Error words to match:', normalizedErrorWords);
-        
         // Only mark words as correct if they match the error word
         this.selectedWords.forEach(wordEl => {
             const wordText = wordEl.textContent.trim().toLowerCase();
             const normalizedWord = wordText.replace(/[^\w]/g, '');
             
-            console.log(`Checking word "${normalizedWord}" against error words:`, normalizedErrorWords);
             
             // Check if this word matches any error word - use strict matching
             const isCorrectWord = normalizedErrorWords.some(ew => {
@@ -1453,7 +1122,6 @@ class DailyTypoGame {
                 return exactMatch || substringMatch;
             });
             
-            console.log(`Word "${normalizedWord}" is correct:`, isCorrectWord);
             
             if (isCorrectWord) {
                 wordEl.classList.add('word-correct');
@@ -1467,7 +1135,6 @@ class DailyTypoGame {
             }
         });
         
-        console.log('Final selectedWords count (correct only):', this.selectedWords.length);
     }
     
     clearCorrectHighlights() {
@@ -1497,14 +1164,10 @@ class DailyTypoGame {
     
     showGameOver() {
         let answerMessage = '';
-        if (this.errorType === 'word') {
-            const answerText = this.errorWords && this.errorWords.length > 1 
-                ? this.errorWords.map((ew, i) => `"${ew}" should be "${this.originalWords[i]}"`).join(', ')
-                : `"${this.errorWord}" should be "${this.originalWord}"`;
-            answerMessage = answerText;
-        } else {
-            answerMessage = `The error was in: "${this.errorSentence}"`;
-        }
+        const answerText = this.errorWords && this.errorWords.length > 1 
+            ? this.errorWords.map((ew, i) => `"${ew}" should be "${this.originalWords[i]}"`).join(', ')
+            : `"${this.errorWord}" should be "${this.originalWord}"`;
+        answerMessage = answerText;
         
         // Replace wrong words with correct words in the article
         this.replaceWrongWordsWithCorrect();
@@ -1784,7 +1447,6 @@ class DailyTypoGame {
             }).catch(err => {
                 // User cancelled or error - fallback to clipboard
                 if (err.name !== 'AbortError') {
-                    console.log('Error sharing:', err);
                 }
                 this.copyToClipboard(shareTextWithUrl);
             });
@@ -1965,7 +1627,8 @@ class DailyTypoGame {
         this.selectedWords = [];
         this.clearSelection();
         this.updateMistakesDisplay();
-        this.gameStartTime = Date.now(); // Start timer when game loads
+        // Don't start timer here - it will be started when user clicks "Play Today's Article"
+        this.gameStartTime = null;
         
         // Safely update feedback element if it exists
         const feedbackDiv = document.getElementById('feedback');
@@ -2024,7 +1687,68 @@ class DailyTypoGame {
     
     showLoading(show) {
         document.getElementById('loading').style.display = show ? 'block' : 'none';
-        document.getElementById('game-content').style.display = show ? 'none' : 'block';
+        const welcomeScreen = document.getElementById('welcome-screen');
+        if (welcomeScreen) {
+            welcomeScreen.style.display = 'none';
+        }
+        if (!show) {
+            // Don't show game content here - it will be shown by startGame()
+            document.getElementById('game-content').style.display = 'none';
+        }
+    }
+    
+    showWelcomeScreen() {
+        const welcomeScreen = document.getElementById('welcome-screen');
+        const gameContent = document.getElementById('game-content');
+        const loading = document.getElementById('loading');
+        
+        // Update welcome screen with puzzle info
+        const rawDateString = this.selectedDate || this.currentDateString;
+        const dateString = this.getValidGameDate(rawDateString);
+        const puzzleNumber = this.calculatePuzzleNumber(dateString);
+        const date = new Date(dateString);
+        
+        // Format date (newspaper style: NOV 4, 2024)
+        const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 
+                       'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+        const year = date.getFullYear();
+        const formattedDate = `${months[date.getMonth()]} ${date.getDate()}, ${year}`;
+        
+        const welcomePuzzleNumber = document.getElementById('welcome-puzzle-number');
+        const welcomePuzzleDate = document.getElementById('welcome-puzzle-date');
+        
+        if (welcomePuzzleNumber) {
+            welcomePuzzleNumber.textContent = `#${puzzleNumber}`;
+        }
+        if (welcomePuzzleDate) {
+            welcomePuzzleDate.textContent = formattedDate;
+        }
+        
+        if (welcomeScreen) {
+            welcomeScreen.style.display = 'block';
+        }
+        if (gameContent) {
+            gameContent.style.display = 'none';
+        }
+        if (loading) {
+            loading.style.display = 'none';
+        }
+    }
+    
+    startGame() {
+        // Start the timer
+        this.gameStartTime = Date.now();
+        
+        // Hide welcome screen and show game content
+        const welcomeScreen = document.getElementById('welcome-screen');
+        const gameContent = document.getElementById('game-content');
+        
+        if (welcomeScreen) {
+            welcomeScreen.style.display = 'none';
+        }
+        if (gameContent) {
+            gameContent.style.display = 'block';
+        }
     }
     
     // ========== DEV MODE FUNCTIONS ==========
@@ -2320,7 +2044,6 @@ class DailyTypoGame {
         });
         
         if (replacementCount === 0) {
-            console.warn(`Warning: Word "${this.devOriginalWord}" not found in extract!`);
             // Try without word boundaries as fallback
             const simpleRegex = new RegExp(escapedOriginal, 'gi');
             this.devArticle.extract = this.devArticle.extract.replace(simpleRegex, match => {
@@ -2396,28 +2119,19 @@ class DailyTypoGame {
             return;
         }
         
-        // Create article entry - support multiple replacements
+        // Create article entry in new minimal format (version 2.0)
+        // Only save title, wrong word, and correct word - article will be fetched from Wikipedia
         const articleEntry = {
             title: this.devArticle.title,
-            extract: this.devArticle.extract, // This already has all replacements applied
-            category: category,
-            thumbnail: this.devArticle.thumbnail || null,
-            description: this.devArticle.description || null,
-            // For backward compatibility, keep first replacement as primary
-            originalWord: this.devReplacements[0].original,
-            wrongWord: this.devReplacements[0].replacement,
-            errorType: 'word',
-            // New: store all replacements
-            replacements: this.devReplacements.map(r => ({
-                original: r.original,
-                replacement: r.replacement
-            }))
+            wrong: this.devReplacements[0].replacement, // The wrong word (what players need to find)
+            correct: this.devReplacements[0].original,    // The correct word (what it should be)
+            category: category  // Save the category from input
         };
         
-        // Double-check: verify the saved extract contains the wrong word
-        console.log('Saving article with extract length:', articleEntry.extract.length);
-        console.log('Wrong word should be:', articleEntry.wrongWord);
-        console.log('Extract contains wrong word?', articleEntry.extract.toLowerCase().includes(articleEntry.wrongWord.toLowerCase()));
+        // Note: We only support single replacement in new format for simplicity
+        // If multiple replacements are needed, they can be added manually to the JSON
+        if (this.devReplacements.length > 1) {
+        }
         
         // Check if we're editing an existing article
         if (this.editingArticleIndex !== null && this.editingArticleIndex !== undefined) {
@@ -2429,7 +2143,15 @@ class DailyTypoGame {
         } else {
             // Add new article
             if (!this.articlesConfig) {
-                this.articlesConfig = { version: "1.0", articles: [] };
+                this.articlesConfig = { version: "2.0", articles: [], scheduled: {} };
+            }
+            // Ensure version is 2.0 for new format
+            if (!this.articlesConfig.version || this.articlesConfig.version === "1.0") {
+                this.articlesConfig.version = "2.0";
+            }
+            // Ensure scheduled object exists
+            if (!this.articlesConfig.scheduled) {
+                this.articlesConfig.scheduled = {};
             }
             this.articlesConfig.articles.push(articleEntry);
             document.getElementById('dev-status').innerHTML = 
