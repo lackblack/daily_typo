@@ -123,14 +123,24 @@
         <div class="game-content" id="game-content" style="display: none;">
             <!-- Article -->
             <div class="article-wrapper">
-                <div class="article-header">
-                    <div class="game-instruction">
-                        <svg class="instruction-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="11" cy="11" r="8"></circle>
-                            <path d="M21 21l-4.35-4.35"></path>
-                        </svg>
-                        <span>Find and click the incorrect "word"</span>
+                <div class="top-message-bar">
+                    <div class="left-messages">
+                        <div class="special-day-message" id="special-day-message" style="display: none;">
+                            <svg class="special-day-icon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="0.5" stroke-linecap="round" stroke-linejoin="round">
+                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                            </svg>
+                            <span class="special-day-text"></span>
+                        </div>
+                        <div class="game-instruction">
+                            <svg class="instruction-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <path d="M21 21l-4.35-4.35"></path>
+                            </svg>
+                            <span>Find and click the incorrect "word"</span>
+                        </div>
                     </div>
+                </div>
+                <div class="article-header">
                     <div class="title-section">
                         <h2 id="article-title" class="article-title"></h2>
                         <div class="article-source" id="article-category">General Knowledge</div>
@@ -154,7 +164,17 @@
                 <div class="post-game-message" id="post-game-message" style="display: none;">
                     <div class="post-game-content">
                         <p class="post-game-text" id="post-game-text"></p>
+                        <div class="countdown-section" id="countdown-section" style="display: none;">
+                            <p class="countdown-label">Next puzzle available in:</p>
+                            <div class="countdown-timer" id="countdown-timer">--:--:--</div>
+                        </div>
                         <div class="post-game-actions">
+                            <button id="post-game-feedback-btn" class="game-btn secondary">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                                </svg>
+                                Feedback
+                            </button>
                             <button id="post-game-random-btn" class="game-btn secondary">Play Random</button>
                             <button id="post-game-archive-btn" class="game-btn secondary">Play Archive</button>
                         </div>

@@ -14,6 +14,7 @@ class DailyTypoGame {
         this.lastGameResult = null; // Track last game result: 'win', 'loss', or null
         this.gameStartTime = null; // Track when game started for timer
         this.elapsedTime = null; // Store elapsed time when game completes
+        this.countdownInterval = null; // Track countdown interval
         
         // Daily system
         this.currentDate = new Date();
@@ -32,6 +33,39 @@ class DailyTypoGame {
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const day = String(date.getDate()).padStart(2, '0');
         return `${year}-${month}-${day}`;
+    }
+    
+    isFutureDate(dateString) {
+        // Check if a date is in the future (after today)
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const targetDate = dateString.includes('T') ? new Date(dateString) : new Date(dateString + 'T00:00:00');
+        targetDate.setHours(0, 0, 0, 0);
+        return targetDate > today;
+    }
+    
+    formatDateForSpecialDays(dateString) {
+        // Convert YYYY-MM-DD to dd.mm.yyyy format for special days config
+        const date = dateString.includes('T') ? new Date(dateString) : new Date(dateString + 'T00:00:00');
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        return `${day}.${month}.${year}`;
+    }
+    
+    getSpecialDayMessage(dateString, article = null) {
+        // First check if the article has a specialDay field
+        if (article && article.specialDay) {
+            return article.specialDay;
+        }
+        
+        // Fallback to checking specialDays object by date (for backward compatibility)
+        if (this.articlesConfig && this.articlesConfig.specialDays) {
+            const formattedDate = this.formatDateForSpecialDays(dateString);
+            return this.articlesConfig.specialDays[formattedDate] || null;
+        }
+        
+        return null;
     }
     
     calculatePuzzleNumber(dateString) {
@@ -204,21 +238,56 @@ class DailyTypoGame {
                 if (!this.articlesConfig.scheduled) {
                     this.articlesConfig.scheduled = {};
                 }
+                if (!this.articlesConfig.specialDays) {
+                    this.articlesConfig.specialDays = {};
+                }
                 
             } else {
                 console.error(`⚠ Failed to load articles-config.json: HTTP ${response.status}`);
-                this.articlesConfig = { version: "2.0", articles: [], scheduled: {} };
+                this.articlesConfig = { version: "2.0", articles: [], scheduled: {}, specialDays: {} };
             }
         } catch (error) {
             console.error('Error loading articles-config.json:', error);
-            this.articlesConfig = { version: "2.0", articles: [], scheduled: {} };
+            this.articlesConfig = { version: "2.0", articles: [], scheduled: {}, specialDays: {} };
         }
     }
     
-    applyWordReplacement(text, correctWord, wrongWord) {
+    applyWordReplacement(text, correctWord, wrongWord, occurrence = null) {
         // Escape special regex characters in the correct word
         const escapedCorrect = correctWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         
+        // If occurrence is specified, replace only that specific occurrence (1-based index)
+        if (occurrence !== null && occurrence > 0) {
+            let matchCount = 0;
+            const targetOccurrence = occurrence;
+            
+            // Try case-sensitive match first
+            if (text.includes(correctWord)) {
+                return text.replace(new RegExp(escapedCorrect, 'g'), (match) => {
+                    matchCount++;
+                    if (matchCount === targetOccurrence) {
+                        return wrongWord;
+                    }
+                    return match; // Keep original for other occurrences
+                });
+            }
+            
+            // If not found, try case-insensitive match
+            const regex = new RegExp(escapedCorrect, 'gi');
+            return text.replace(regex, (match) => {
+                matchCount++;
+                if (matchCount === targetOccurrence) {
+                    // Preserve case of original match
+                    if (match[0] === match[0].toUpperCase()) {
+                        return wrongWord.charAt(0).toUpperCase() + wrongWord.slice(1).toLowerCase();
+                    }
+                    return wrongWord.toLowerCase();
+                }
+                return match; // Keep original for other occurrences
+            });
+        }
+        
+        // Default behavior: replace all occurrences (backward compatible)
         // Try to match with case sensitivity first (exact match)
         if (text.includes(correctWord)) {
             return text.replace(new RegExp(escapedCorrect, 'g'), wrongWord);
@@ -244,7 +313,13 @@ class DailyTypoGame {
             
             // Ensure we use a valid game date (on or after Oct 27, 2025)
             const rawDate = dateString || this.currentDateString;
-            const targetDate = this.getValidGameDate(rawDate);
+            let targetDate = this.getValidGameDate(rawDate);
+            
+            // Prevent loading future dates - if date is in the future, use today's date instead
+            if (this.isFutureDate(targetDate)) {
+                targetDate = this.getValidGameDate(this.currentDateString);
+            }
+            
             this.selectedDate = targetDate;
             
             // Check if we have any articles (either in array or scheduled)
@@ -263,6 +338,13 @@ class DailyTypoGame {
             if (!savedArticle) {
                 this.showLoading(false);
                 this.showNoArticlesMessage();
+                return;
+            }
+            
+            // Skip articles that don't have wrong/correct fields yet (incomplete articles)
+            if (!savedArticle.wrong || !savedArticle.correct) {
+                this.showLoading(false);
+                alert(`Article "${savedArticle.title}" is not yet configured. Please add "wrong" and "correct" fields to the article.`);
                 return;
             }
             
@@ -292,7 +374,9 @@ class DailyTypoGame {
                 description = articleData.description || null;
                 
                 // Apply replacement: replace correct word with wrong word
-                extract = this.applyWordReplacement(extract, savedArticle.correct, savedArticle.wrong);
+                // If occurrence is specified, replace only that specific occurrence (1-based index)
+                const occurrence = savedArticle.occurrence !== undefined ? savedArticle.occurrence : null;
+                extract = this.applyWordReplacement(extract, savedArticle.correct, savedArticle.wrong, occurrence);
                 
                 // Set error tracking
                 this.originalWord = savedArticle.correct;
@@ -345,7 +429,22 @@ class DailyTypoGame {
             
             // Only show welcome screen for today's article, not for random or archive
             const isTodaysArticle = targetDate === this.currentDateString;
-            if (isTodaysArticle) {
+            const isTodaysCompleted = isTodaysArticle && this.isCompleted(targetDate);
+            
+            if (isTodaysCompleted) {
+                // Today's puzzle is already completed - show completed state
+                this.lastGameResult = 'win';
+                this.replaceWrongWordsWithCorrect();
+                this.showPostGameMessage();
+                // Hide submit buttons since puzzle is completed
+                const submitButtons = document.getElementById('submit-buttons');
+                if (submitButtons) submitButtons.style.display = 'none';
+                // Show game content directly (no welcome screen, no game start)
+                const welcomeScreen = document.getElementById('welcome-screen');
+                const gameContent = document.getElementById('game-content');
+                if (welcomeScreen) welcomeScreen.style.display = 'none';
+                if (gameContent) gameContent.style.display = 'block';
+            } else if (isTodaysArticle) {
                 this.showWelcomeScreen();
             } else {
                 // For random/archive articles, start the game immediately
@@ -462,6 +561,30 @@ class DailyTypoGame {
         if (shareBtn) shareBtn.addEventListener('click', () => this.shareCompletion());
         
         // Post-game buttons
+        const postGameFeedbackBtn = document.getElementById('post-game-feedback-btn');
+        if (postGameFeedbackBtn) {
+            postGameFeedbackBtn.addEventListener('click', async () => {
+                const email = 'feedback@dailytypo.com';
+                try {
+                    await navigator.clipboard.writeText(email);
+                    // Show temporary feedback message
+                    const originalHTML = postGameFeedbackBtn.innerHTML;
+                    postGameFeedbackBtn.innerHTML = `
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                        Email copied
+                    `;
+                    setTimeout(() => {
+                        postGameFeedbackBtn.innerHTML = originalHTML;
+                    }, 2000);
+                } catch (err) {
+                    // Fallback if clipboard API fails
+                    alert(`Email copied: ${email}`);
+                }
+            });
+        }
+        
         const postGameRandomBtn = document.getElementById('post-game-random-btn');
         if (postGameRandomBtn) {
             postGameRandomBtn.addEventListener('click', () => {
@@ -613,13 +736,19 @@ class DailyTypoGame {
     showFloatingSubmit() {
         const submitButtons = document.getElementById('submit-buttons');
         
-        if (this.selectedWords.length === 0) {
-            submitButtons.style.display = 'none';
+        // Don't show buttons if today's puzzle is already completed
+        const dateString = this.selectedDate || this.currentDateString;
+        const isTodaysArticle = dateString === this.currentDateString;
+        const isTodaysCompleted = isTodaysArticle && this.isCompleted(dateString);
+        
+        // Don't show buttons if game is over (out of tries) or puzzle is completed
+        if (isTodaysCompleted || this.selectedWords.length === 0 || this.triesRemaining <= 0) {
+            if (submitButtons) submitButtons.style.display = 'none';
             return;
         }
         
         // Show buttons in fixed position above article content
-        submitButtons.style.display = 'flex';
+        if (submitButtons) submitButtons.style.display = 'flex';
     }
     
     clearSelection() {
@@ -761,6 +890,19 @@ class DailyTypoGame {
         // Update category display
         const categoryText = this.currentArticle.category || 'General Knowledge';
         document.getElementById('article-category').textContent = categoryText;
+        
+        // Check for special day message - check both article's specialDay field and date-based lookup
+        const dateString = this.selectedDate || this.currentDateString;
+        const savedArticle = this.getArticleForDate(dateString);
+        const specialDayMessage = this.getSpecialDayMessage(dateString, savedArticle);
+        const specialDayEl = document.getElementById('special-day-message');
+        const specialDayTextEl = specialDayEl ? specialDayEl.querySelector('.special-day-text') : null;
+        if (specialDayMessage && specialDayEl && specialDayTextEl) {
+            specialDayTextEl.textContent = specialDayMessage;
+            specialDayEl.style.display = 'flex';
+        } else if (specialDayEl) {
+            specialDayEl.style.display = 'none';
+        }
         
         const contentDiv = document.getElementById('article-content');
         let displayText = this.currentArticle.extract;
@@ -1172,6 +1314,12 @@ class DailyTypoGame {
         // Replace wrong words with correct words in the article
         this.replaceWrongWordsWithCorrect();
         
+        // Hide submit buttons since game is over
+        const submitButtons = document.getElementById('submit-buttons');
+        if (submitButtons) {
+            submitButtons.style.display = 'none';
+        }
+        
         // Show completion modal with the answer (isWin = false)
         this.showCompletionModal(answerMessage, false);
         
@@ -1323,8 +1471,21 @@ class DailyTypoGame {
     showPostGameMessage() {
         const postGameMessage = document.getElementById('post-game-message');
         const postGameText = document.getElementById('post-game-text');
+        const countdownSection = document.getElementById('countdown-section');
         
         if (!postGameMessage || !postGameText) return;
+        
+        // Hide submit buttons when showing post-game message (game is over)
+        const submitButtons = document.getElementById('submit-buttons');
+        if (submitButtons) {
+            submitButtons.style.display = 'none';
+        }
+        
+        // Clear any existing countdown interval
+        if (this.countdownInterval) {
+            clearInterval(this.countdownInterval);
+            this.countdownInterval = null;
+        }
         
         // Check if today's puzzle is completed
         const dateString = this.selectedDate || this.currentDateString;
@@ -1336,27 +1497,76 @@ class DailyTypoGame {
         if (wasLoss && isToday) {
             // User lost today's puzzle
             postGameText.textContent = "Better luck next time! A new puzzle will be available tomorrow. You can also try a random puzzle or browse the archive to keep playing.";
+            if (countdownSection) countdownSection.style.display = 'block';
+            this.startCountdown();
         } else if (wasLoss && !isToday) {
             // User lost an archived/random puzzle
             postGameText.textContent = "Better luck next time! Want to try another puzzle?";
+            if (countdownSection) countdownSection.style.display = 'none';
         } else if (isToday && isCompleted) {
             // Today's puzzle is completed (win)
             postGameText.textContent = "Great job! Come back tomorrow for a new puzzle.";
+            if (countdownSection) countdownSection.style.display = 'block';
+            this.startCountdown();
         } else if (isToday && !isCompleted) {
             // Today's puzzle not completed (shouldn't happen, but just in case)
             postGameText.textContent = "Keep trying! You can also play random puzzles or browse the archive.";
+            if (countdownSection) countdownSection.style.display = 'none';
         } else {
             // Playing archived or random puzzle (win)
             postGameText.textContent = "Want to play more? Try a random puzzle or browse the archive.";
+            if (countdownSection) countdownSection.style.display = 'none';
         }
         
         postGameMessage.style.display = 'block';
+    }
+    
+    startCountdown() {
+        const countdownTimer = document.getElementById('countdown-timer');
+        if (!countdownTimer) return;
+        
+        const updateCountdown = () => {
+            const now = new Date();
+            const tomorrow = new Date(now);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            tomorrow.setHours(0, 0, 0, 0);
+            
+            const diff = tomorrow - now;
+            
+            if (diff <= 0) {
+                countdownTimer.textContent = '00:00:00';
+                if (this.countdownInterval) {
+                    clearInterval(this.countdownInterval);
+                    this.countdownInterval = null;
+                }
+                return;
+            }
+            
+            const hours = Math.floor(diff / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+            
+            countdownTimer.textContent = 
+                `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        };
+        
+        // Update immediately
+        updateCountdown();
+        
+        // Update every second
+        this.countdownInterval = setInterval(updateCountdown, 1000);
     }
     
     hidePostGameMessage() {
         const postGameMessage = document.getElementById('post-game-message');
         if (postGameMessage) {
             postGameMessage.style.display = 'none';
+        }
+        
+        // Clear countdown interval when hiding
+        if (this.countdownInterval) {
+            clearInterval(this.countdownInterval);
+            this.countdownInterval = null;
         }
     }
     
@@ -1370,16 +1580,16 @@ class DailyTypoGame {
         const validTodayDate = this.getValidGameDate(this.currentDateString);
         const todayPuzzleNumber = this.calculatePuzzleNumber(validTodayDate);
         
-        // Ensure we have at least 1 game available
-        if (todayPuzzleNumber < 1) {
-            // If somehow we have no games, default to game #1
-            await this.loadDailyGame('2025-10-27');
-            this.updateDailyInfo();
+        // Ensure we have at least 2 games available (today + at least one past puzzle)
+        if (todayPuzzleNumber < 2) {
+            // If today is puzzle #1, there are no past puzzles to pick from
+            alert('Not enough puzzles available yet. Come back tomorrow for more puzzles!');
             return;
         }
         
-        // Pick a random puzzle number between 1 and today's number
-        const randomPuzzleNumber = Math.floor(Math.random() * todayPuzzleNumber) + 1;
+        // Pick a random puzzle number between 1 and (today's number - 1) to exclude today
+        const maxRandomPuzzle = todayPuzzleNumber - 1;
+        const randomPuzzleNumber = Math.floor(Math.random() * maxRandomPuzzle) + 1;
         
         // Calculate the date for this puzzle number
         const randomDateString = this.calculateDateFromPuzzleNumber(randomPuzzleNumber);
@@ -1504,16 +1714,26 @@ class DailyTypoGame {
         
         if (!modal || !archiveList) return;
         
-        // Show all available articles (puzzles 1 through number of articles)
+        // Show all available articles (puzzles 1 through yesterday, excluding today)
         const totalArticles = this.articlesConfig.articles.length;
+        const validTodayDate = this.getValidGameDate(this.currentDateString);
+        const todayPuzzleNumber = this.calculatePuzzleNumber(validTodayDate);
+        // Exclude today's puzzle - show only up to yesterday
+        const maxPuzzleNumber = Math.min(totalArticles, Math.max(1, todayPuzzleNumber - 1));
+        
         const puzzles = [];
         
-        for (let puzzleNum = 1; puzzleNum <= totalArticles; puzzleNum++) {
+        for (let puzzleNum = 1; puzzleNum <= maxPuzzleNumber; puzzleNum++) {
             // Get article
             const article = this.articlesConfig.articles[puzzleNum - 1];
             
             // Calculate date for this puzzle
             const dateString = this.calculateDateFromPuzzleNumber(puzzleNum);
+            
+            // Skip if this date is in the future or is today (safety check)
+            if (this.isFutureDate(dateString) || dateString === this.currentDateString) {
+                continue;
+            }
             
             // Format date
             const date = new Date(dateString + 'T00:00:00');
@@ -1630,6 +1850,12 @@ class DailyTypoGame {
         // Don't start timer here - it will be started when user clicks "Play Today's Article"
         this.gameStartTime = null;
         
+        // Clear countdown interval
+        if (this.countdownInterval) {
+            clearInterval(this.countdownInterval);
+            this.countdownInterval = null;
+        }
+        
         // Safely update feedback element if it exists
         const feedbackDiv = document.getElementById('feedback');
         if (feedbackDiv) {
@@ -1736,6 +1962,26 @@ class DailyTypoGame {
     }
     
     startGame() {
+        // Check if today's puzzle is already completed - if so, show completed state instead
+        const dateString = this.selectedDate || this.currentDateString;
+        const isTodaysArticle = dateString === this.currentDateString;
+        const isTodaysCompleted = isTodaysArticle && this.isCompleted(dateString);
+        
+        if (isTodaysCompleted) {
+            // Today's puzzle is already completed - show completed state
+            this.lastGameResult = 'win';
+            this.replaceWrongWordsWithCorrect();
+            this.showPostGameMessage();
+            // Hide submit buttons since puzzle is completed
+            const submitButtons = document.getElementById('submit-buttons');
+            if (submitButtons) submitButtons.style.display = 'none';
+            const welcomeScreen = document.getElementById('welcome-screen');
+            const gameContent = document.getElementById('game-content');
+            if (welcomeScreen) welcomeScreen.style.display = 'none';
+            if (gameContent) gameContent.style.display = 'block';
+            return;
+        }
+        
         // Start the timer
         this.gameStartTime = Date.now();
         
@@ -2247,6 +2493,38 @@ class DailyTypoGame {
 
 // Initialize game when page loads
 document.addEventListener('DOMContentLoaded', () => {
-    new DailyTypoGame();
+    window.game = new DailyTypoGame();
+    
+    // Debug helper functions (available in console)
+    window.clearCompletions = () => {
+        localStorage.removeItem('dailyTypoCompletions');
+        console.log('✓ Completions cleared! Reloading...');
+        location.reload();
+    };
+    
+    window.clearToday = () => {
+        const game = window.game;
+        if (!game) {
+            console.error('Game not initialized');
+            return;
+        }
+        const today = game.currentDateString;
+        const completions = JSON.parse(localStorage.getItem('dailyTypoCompletions') || '{}');
+        delete completions[today];
+        localStorage.setItem('dailyTypoCompletions', JSON.stringify(completions));
+        console.log(`✓ Today's puzzle (${today}) cleared! Reloading...`);
+        location.reload();
+    };
+    
+    window.showCompletions = () => {
+        const completions = JSON.parse(localStorage.getItem('dailyTypoCompletions') || '{}');
+        console.log('Current completions:', completions);
+        return completions;
+    };
+    
+    console.log('Debug helpers available:');
+    console.log('  - clearCompletions() - Clear all completions');
+    console.log('  - clearToday() - Clear today\'s puzzle only');
+    console.log('  - showCompletions() - Show all completions');
 });
 
