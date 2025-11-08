@@ -88,15 +88,16 @@
     },
     {
       "title": "Internet",
-      "wrong": "1990s",
-      "correct": "1960s",
+      "wrong": "Net",
+      "correct": "Web",
+      "wrongOccurrence": 2,
       "category": "Technology",
       "date": "08.11.2025"
     },
     {
       "title": "Chocolate",
-      "wrong": "Europe",
-      "correct": "Americas",
+      "wrong": "Eastern",
+      "correct": "Easter",
       "category": "Food & Drink",
       "date": "09.11.2025",
       "specialDay": "Finland's Father's Day!"

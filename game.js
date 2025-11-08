@@ -5,6 +5,7 @@ class DailyTypoGame {
         this.originalWord = null;
         this.errorWords = [];
         this.originalWords = [];
+        this.wrongOccurrence = null; // Track which occurrence of wrong word to replace
         this.errorSentence = null;
         this.errorType = null;
         this.triesRemaining = 3; // 3 total attempts = 2 mistakes allowed
@@ -151,6 +152,16 @@ class DailyTypoGame {
     markCompleted(dateString) {
         this.completions[dateString] = {
             completed: true,
+            won: true,
+            completedAt: new Date().toISOString()
+        };
+        this.saveCompletions();
+    }
+    
+    markGameOver(dateString) {
+        this.completions[dateString] = {
+            completed: true,
+            won: false,
             completedAt: new Date().toISOString()
         };
         this.saveCompletions();
@@ -158,6 +169,14 @@ class DailyTypoGame {
     
     isCompleted(dateString) {
         return this.completions[dateString] && this.completions[dateString].completed;
+    }
+    
+    isWon(dateString) {
+        const completion = this.completions[dateString];
+        if (!completion) return false;
+        // Backward compatibility: if 'won' field doesn't exist, assume it's a win
+        // (old completions were only saved for wins, not game overs)
+        return completion.won !== false;
     }
     
     async init() {
@@ -183,7 +202,7 @@ class DailyTypoGame {
             date.setDate(date.getDate() - i);
             const dateString = this.getDateString(date);
             
-            if (this.isCompleted(dateString)) {
+            if (this.isWon(dateString)) {
                 streak++;
             } else if (i > 0) {
                 // If we find a gap, stop counting
@@ -198,13 +217,13 @@ class DailyTypoGame {
         let xp = 0;
         const today = new Date();
         
-        // Calculate XP from completions (each completion = 100 XP)
+        // Calculate XP from completions (each win = 100 XP)
         for (let i = 0; i < 365; i++) {
             const date = new Date(today);
             date.setDate(date.getDate() - i);
             const dateString = this.getDateString(date);
             
-            if (this.isCompleted(dateString)) {
+            if (this.isWon(dateString)) {
                 xp += 100;
             }
         }
@@ -304,7 +323,7 @@ class DailyTypoGame {
         });
     }
     
-    async loadDailyGame(dateString = null) {
+    async loadDailyGame(dateString = null, allowFuture = false) {
         try {
             this.resetGameState();
             this.hidePostGameMessage();
@@ -316,7 +335,8 @@ class DailyTypoGame {
             let targetDate = this.getValidGameDate(rawDate);
             
             // Prevent loading future dates - if date is in the future, use today's date instead
-            if (this.isFutureDate(targetDate)) {
+            // (unless allowFuture is true, for preview purposes)
+            if (!allowFuture && this.isFutureDate(targetDate)) {
                 targetDate = this.getValidGameDate(this.currentDateString);
             }
             
@@ -383,6 +403,7 @@ class DailyTypoGame {
                 this.errorWord = savedArticle.wrong;
                 this.errorWords = [savedArticle.wrong.toLowerCase()];
                 this.originalWords = [savedArticle.correct.toLowerCase()];
+                this.wrongOccurrence = savedArticle.wrongOccurrence !== undefined ? savedArticle.wrongOccurrence : null;
                 this.errorType = 'word';
             } else {
                 // Old format: article already has extract and error info
@@ -432,8 +453,8 @@ class DailyTypoGame {
             const isTodaysCompleted = isTodaysArticle && this.isCompleted(targetDate);
             
             if (isTodaysCompleted) {
-                // Today's puzzle is already completed - show completed state
-                this.lastGameResult = 'win';
+                // Today's puzzle is already completed (win or loss) - show completed state
+                this.lastGameResult = this.isWon(targetDate) ? 'win' : 'loss';
                 this.replaceWrongWordsWithCorrect();
                 this.showPostGameMessage();
                 // Hide submit buttons since puzzle is completed
@@ -782,6 +803,7 @@ class DailyTypoGame {
             }
             
             const category = this.getArticleCategory(data.title, data.description);
+            
             return {
                 title: data.title,
                 extract: data.extract,
@@ -919,6 +941,10 @@ class DailyTypoGame {
         }
         
         // Add paragraphs with clickable words
+        // Track occurrences of wrong words for validation
+        let wrongWordOccurrenceCount = 0;
+        const errorWord = this.errorWord ? this.errorWord.toLowerCase().replace(/[^\w]/g, '') : null;
+        
         html += paragraphs.map(para => {
             // Split text into words, preserving spaces
             const words = para.split(/(\s+)/);
@@ -927,9 +953,16 @@ class DailyTypoGame {
                 if (/^\s+$/.test(word)) {
                     return word;
                 }
+                // Check if this word matches the error word and track occurrence
+                const normalizedWord = word.replace(/[^\w]/g, '').toLowerCase();
+                let occurrenceAttr = '';
+                if (errorWord && normalizedWord === errorWord) {
+                    wrongWordOccurrenceCount++;
+                    occurrenceAttr = ` data-wrong-occurrence="${wrongWordOccurrenceCount}"`;
+                }
                 // Wrap words in clickable spans without extra spacing
                 const wordClass = 'word-clickable';
-                return `<span class="${wordClass}">${word}</span>`;
+                return `<span class="${wordClass}"${occurrenceAttr}>${word}</span>`;
             }).join('');
             return `<p>${wrappedWords}</p>`;
         }).join('');
@@ -1020,8 +1053,12 @@ class DailyTypoGame {
             let incorrectMatches = 0;
             
             // Check each selected word
-            guessWords.forEach(gw => {
+            guessWords.forEach((gw, wordIndex) => {
                 const normalizedGw = gw.replace(/[^\w]/g, '').toLowerCase();
+                
+                // Get the word element to check its occurrence
+                const wordElement = this.selectedWords[wordIndex];
+                const wordOccurrence = wordElement ? parseInt(wordElement.getAttribute('data-wrong-occurrence')) : null;
                 
                 // Check if it matches any wrong word (should be selected)
                 // Use exact match first, then check if one word is contained in the other (but be more strict)
@@ -1043,6 +1080,15 @@ class DailyTypoGame {
                     }
                     return false;
                 });
+                
+                // If wrongOccurrence is specified and word matches error word, check occurrence
+                if (matchesError && this.wrongOccurrence !== null && this.wrongOccurrence > 0) {
+                    if (wordOccurrence !== this.wrongOccurrence) {
+                        // This word matches the error word but is the wrong occurrence, treat as incorrect
+                        incorrectMatches++;
+                        return; // Skip rest of processing for this word
+                    }
+                }
                 
                 // Check if it matches any original/correct word (should NOT be selected)
                 const matchesOriginal = normalizedOriginalWords.some(ow => {
@@ -1310,6 +1356,10 @@ class DailyTypoGame {
             ? this.errorWords.map((ew, i) => `"${ew}" should be "${this.originalWords[i]}"`).join(', ')
             : `"${this.errorWord}" should be "${this.originalWord}"`;
         answerMessage = answerText;
+        
+        // Mark as game over to lock the puzzle
+        const dateString = this.selectedDate || this.currentDateString;
+        this.markGameOver(dateString);
         
         // Replace wrong words with correct words in the article
         this.replaceWrongWordsWithCorrect();
@@ -1800,6 +1850,7 @@ class DailyTypoGame {
         
         // Find all word elements that contain the wrong words
         const allWordElements = document.querySelectorAll('#article-content .word-clickable');
+        const targetOccurrence = this.wrongOccurrence;
         
         allWordElements.forEach(wordEl => {
             const wordText = wordEl.textContent.trim();
@@ -1812,6 +1863,15 @@ class DailyTypoGame {
                 
                 if (normalizedWord === errorWord || (normalizedWord.length >= errorWord.length - 1 && normalizedWord.length <= errorWord.length + 1 && 
                     (normalizedWord.includes(errorWord) || errorWord.includes(normalizedWord)))) {
+                    
+                    // If wrongOccurrence is specified, check the data attribute instead of counting
+                    if (targetOccurrence !== null && targetOccurrence > 0) {
+                        const wordOccurrence = parseInt(wordEl.getAttribute('data-wrong-occurrence'));
+                        if (wordOccurrence !== targetOccurrence) {
+                            // Not the target occurrence, skip this one
+                            break;
+                        }
+                    }
                     
                     // Preserve punctuation and case
                     const hasPunctuation = /[^\w]/.test(wordText);
@@ -1841,6 +1901,7 @@ class DailyTypoGame {
         this.originalWord = null;
         this.errorWords = [];
         this.originalWords = [];
+        this.wrongOccurrence = null;
         this.errorSentence = null;
         this.errorType = null;
         this.triesRemaining = this.maxTries;
@@ -2522,9 +2583,28 @@ document.addEventListener('DOMContentLoaded', () => {
         return completions;
     };
     
+    window.showNextDay = async () => {
+        const game = window.game;
+        if (!game) {
+            console.error('Game not initialized');
+            return;
+        }
+        // Get the currently displayed date (or today if none selected)
+        const currentDisplayDate = game.selectedDate || game.currentDateString;
+        const currentDate = currentDisplayDate.includes('T') 
+            ? new Date(currentDisplayDate) 
+            : new Date(currentDisplayDate + 'T00:00:00');
+        const nextDate = new Date(currentDate);
+        nextDate.setDate(nextDate.getDate() + 1);
+        const nextDateString = game.getDateString(nextDate);
+        console.log(`✓ Loading next day's puzzle (${nextDateString})...`);
+        await game.loadDailyGame(nextDateString, true); // allowFuture = true for preview
+    };
+    
     console.log('Debug helpers available:');
     console.log('  - clearCompletions() - Clear all completions');
     console.log('  - clearToday() - Clear today\'s puzzle only');
     console.log('  - showCompletions() - Show all completions');
+    console.log('  - showNextDay() - Show next day\'s puzzle (call multiple times to advance)');
 });
 
