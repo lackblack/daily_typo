@@ -2,11 +2,12 @@
   "version": "2.0",
   "articles": [
     {
-      "title": "Mount Everest",
-      "wrong": "Mont",
-      "correct": "Mount",
+      "title": "Hello world program",
+      "wrong": "Howdy",
+      "correct": "Hello",
       "occurrence": 2,
-      "category": "Geography",
+      "wrongOccurrence": 1,
+      "category": "Technology",
       "date": "27.10.2025"
     },
     {
@@ -39,8 +40,8 @@
     },
     {
       "title": "Cat",
-      "wrong": "100",
-      "correct": "10,000",
+      "wrong": "Tyrannosaurus",
+      "correct": "Cornish",
       "category": "General Knowledge",
       "date": "01.11.2025"
     },
@@ -66,10 +67,10 @@
       "date": "04.11.2025"
     },
     {
-      "title": "World War II",
-      "wrong": "1837",
-      "correct": "1937",
-      "category": "General Knowledge",
+      "title": "Hamburger",
+      "wrong": "can't",
+      "correct": "can",
+      "category": "Food & Drink",
       "date": "05.11.2025"
     },
     {
@@ -95,17 +96,17 @@
       "date": "08.11.2025"
     },
     {
-      "title": "Chocolate",
-      "wrong": "Eastern",
-      "correct": "Easter",
-      "category": "Food & Drink",
+      "title": "Father",
+      "wrong": "Farther",
+      "correct": "Father",
+      "category": "General Knowledge",
       "date": "09.11.2025",
       "specialDay": "Finland's Father's Day!"
     },
     {
       "title": "Shakespeare",
-      "wrong": "1600s",
-      "correct": "1500s",
+      "wrong": "dramatizer",
+      "correct": "dramatist",
       "category": "Biography",
       "date": "10.11.2025"
     },
@@ -118,8 +119,10 @@
     },
     {
       "title": "Mozart",
-      "wrong": "French",
-      "correct": "Austrian",
+      "wrong": "math",
+      "correct": "music",
+      "occurrence": 1,
+      "wrongOccurrence": 1,
       "category": "Biography",
       "date": "12.11.2025"
     },
