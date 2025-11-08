@@ -45,25 +45,10 @@ class DailyTypoGame {
         return targetDate > today;
     }
     
-    formatDateForSpecialDays(dateString) {
-        // Convert YYYY-MM-DD to dd.mm.yyyy format for special days config
-        const date = dateString.includes('T') ? new Date(dateString) : new Date(dateString + 'T00:00:00');
-        const day = String(date.getDate()).padStart(2, '0');
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const year = date.getFullYear();
-        return `${day}.${month}.${year}`;
-    }
-    
     getSpecialDayMessage(dateString, article = null) {
-        // First check if the article has a specialDay field
+        // Check if the article has a specialDay field
         if (article && article.specialDay) {
             return article.specialDay;
-        }
-        
-        // Fallback to checking specialDays object by date (for backward compatibility)
-        if (this.articlesConfig && this.articlesConfig.specialDays) {
-            const formattedDate = this.formatDateForSpecialDays(dateString);
-            return this.articlesConfig.specialDays[formattedDate] || null;
         }
         
         return null;
@@ -213,29 +198,9 @@ class DailyTypoGame {
         return streak;
     }
     
-    calculateXP() {
-        let xp = 0;
-        const today = new Date();
-        
-        // Calculate XP from completions (each win = 100 XP)
-        for (let i = 0; i < 365; i++) {
-            const date = new Date(today);
-            date.setDate(date.getDate() - i);
-            const dateString = this.getDateString(date);
-            
-            if (this.isWon(dateString)) {
-                xp += 100;
-            }
-        }
-        
-        return xp;
-    }
-    
     updateStats() {
-        const streak = this.calculateStreak();
-        
-        const streakEl = document.getElementById('streak-count');
-        if (streakEl) streakEl.textContent = streak;
+        // Streak calculation is available but UI element not yet implemented
+        // const streak = this.calculateStreak();
     }
     
     async loadArticlesConfig() {
@@ -257,17 +222,14 @@ class DailyTypoGame {
                 if (!this.articlesConfig.scheduled) {
                     this.articlesConfig.scheduled = {};
                 }
-                if (!this.articlesConfig.specialDays) {
-                    this.articlesConfig.specialDays = {};
-                }
                 
             } else {
                 console.error(`⚠ Failed to load articles-config.json: HTTP ${response.status}`);
-                this.articlesConfig = { version: "2.0", articles: [], scheduled: {}, specialDays: {} };
+                this.articlesConfig = { version: "2.0", articles: [], scheduled: {} };
             }
         } catch (error) {
             console.error('Error loading articles-config.json:', error);
-            this.articlesConfig = { version: "2.0", articles: [], scheduled: {}, specialDays: {} };
+                this.articlesConfig = { version: "2.0", articles: [], scheduled: {} };
         }
     }
     
@@ -527,32 +489,6 @@ class DailyTypoGame {
         this.updateNewspaperDate();
     }
     
-    saveArticlesConfigToStorage() {
-        try {
-            localStorage.setItem('wikiGameArticles', JSON.stringify(this.articlesConfig));
-        } catch (error) {
-            console.error('Error saving to localStorage:', error);
-        }
-    }
-    
-    exportArticlesConfig() {
-        // Optional: Export to file for backup/sharing
-        const jsonStr = JSON.stringify(this.articlesConfig, null, 2);
-        const blob = new Blob([jsonStr], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'articles-config.json';
-        a.click();
-        URL.revokeObjectURL(url);
-    }
-    
-    saveArticlesConfig() {
-        // Auto-save to localStorage (instant, no file dialog)
-        this.saveArticlesConfigToStorage();
-        return true;
-    }
-    
     setupEventListeners() {
         const submitGuessBtn = document.getElementById('submit-guess-btn');
         if (submitGuessBtn) submitGuessBtn.addEventListener('click', () => this.submitGuess());
@@ -742,6 +678,18 @@ class DailyTypoGame {
                     welcomeScreen.style.display = 'none';
                 }
                 this.playRandomArticle();
+            });
+        }
+        
+        // Game title click handler - acts as home/refresh button
+        const gameTitleWrapper = document.querySelector('.game-title-wrapper');
+        if (gameTitleWrapper) {
+            gameTitleWrapper.addEventListener('click', () => {
+                // Close any open modals
+                this.closeCompletionModal();
+                this.closeArchiveModal();
+                // Load today's game (refresh)
+                this.loadDailyGame();
             });
         }
     }
@@ -1173,9 +1121,6 @@ class DailyTypoGame {
             // Animate pencil icon bounce
             this.animatePencilIcon();
             
-            // Show "Wrong" indicator briefly
-            this.showWrongIndicator();
-            
             if (this.triesRemaining <= 0) {
                 // Out of tries - show the answer
                 this.showGameOver();
@@ -1196,8 +1141,8 @@ class DailyTypoGame {
         const textEl = document.getElementById('mistakes-left-text');
         if (!container) return;
         
-        // Calculate tries left (triesRemaining - 1 = tries left)
-        const triesLeft = Math.max(0, this.triesRemaining - 1);
+        // Calculate tries left (number of visible icons)
+        const triesLeft = Math.max(0, this.triesRemaining);
         
         // Clear existing icons
         container.innerHTML = '';
@@ -1226,8 +1171,8 @@ class DailyTypoGame {
             return svg;
         };
         
-        // Create icons for remaining tries (max 2)
-        const maxTriesToShow = 2;
+        // Create icons for remaining tries (max 3)
+        const maxTriesToShow = 3;
         for (let i = 0; i < maxTriesToShow; i++) {
             const icon = createPencilIcon();
             if (i >= triesLeft) {
@@ -1261,13 +1206,6 @@ class DailyTypoGame {
     updateMistakesDisplay() {
         // Update tries display with icons
         this.updateTriesDisplay();
-    }
-    
-    updateLevelDisplay() {
-        const currentLevelEl = document.getElementById('current-level');
-        const maxLevelsEl = document.getElementById('max-levels');
-        if (currentLevelEl) currentLevelEl.textContent = this.currentLevel.toString();
-        if (maxLevelsEl) maxLevelsEl.textContent = this.maxLevels.toString();
     }
     
     markWordsAsWrong() {
@@ -1333,23 +1271,6 @@ class DailyTypoGame {
         });
     }
     
-    showWrongIndicator() {
-        const wrongIndicator = document.getElementById('wrong-indicator');
-        if (wrongIndicator) {
-            wrongIndicator.style.display = 'inline';
-            wrongIndicator.style.animation = 'none';
-            
-            // Force reflow
-            void wrongIndicator.offsetWidth;
-            
-            wrongIndicator.style.animation = 'shake 0.5s ease, fadeOut 0.5s ease 1s forwards';
-            
-            setTimeout(() => {
-                wrongIndicator.style.display = 'none';
-            }, 1500);
-        }
-    }
-    
     showGameOver() {
         let answerMessage = '';
         const answerText = this.errorWords && this.errorWords.length > 1 
@@ -1380,51 +1301,6 @@ class DailyTypoGame {
         }
     }
     
-    showGameComplete() {
-        const feedbackDiv = document.getElementById('feedback');
-        if (feedbackDiv) {
-            feedbackDiv.innerHTML = 
-                `<div style="text-align: center; padding: 20px;">
-                    <h2 style="color: #28a745; margin: 0 0 10px 0;">🎉 Game Complete!</h2>
-                    <p style="margin: 0;">You completed all ${this.maxLevels} levels!</p>
-                    <p style="margin: 10px 0 0 0; font-size: 0.9rem;">Final Score: ${this.score}</p>
-                </div>`;
-            feedbackDiv.className = 'feedback correct';
-        }
-        
-        // Disable submit button
-        const submitBtn = document.getElementById('submit-guess-btn');
-        if (submitBtn) {
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Game Complete';
-        }
-        
-        // Reset for new game after delay
-        setTimeout(() => {
-            this.resetForNewGame();
-        }, 5000);
-    }
-    
-    resetForNewGame() {
-        this.currentLevel = 0;
-        this.usedArticleIndices = [];
-        this.score = 0;
-        const scoreEl = document.getElementById('score');
-        if (scoreEl) scoreEl.textContent = '0';
-        this.resetGameState();
-        this.loadNewGame();
-    }
-    
-    startNewGame() {
-        // Reset everything for a completely new game
-        this.currentLevel = 0;
-        this.usedArticleIndices = [];
-        this.score = 0;
-        const scoreEl = document.getElementById('score');
-        if (scoreEl) scoreEl.textContent = '0';
-        this.loadNewGame();
-    }
-    
     showCompletionModal(message, isWin = true) {
         const dateString = this.selectedDate || this.currentDateString;
         
@@ -1440,12 +1316,6 @@ class DailyTypoGame {
             this.replaceWrongWordsWithCorrect();
         }
         
-        // Hide wrong indicator if visible
-        const wrongIndicator = document.getElementById('wrong-indicator');
-        if (wrongIndicator) {
-            wrongIndicator.style.display = 'none';
-        }
-        
         // Update title and checkmark based on win/loss
         const modalTitle = document.querySelector('#completion-modal h2');
         const checkmark = document.querySelector('.checkmark-animation');
@@ -1456,11 +1326,22 @@ class DailyTypoGame {
             checkmark.style.display = isWin ? 'block' : 'none';
         }
         
-        // Update completion message
+        // Update completion message with highlighted words
         const completionMessage = document.getElementById('completion-message');
         if (completionMessage) {
             const correctionText = message.split('\n')[0] || message;
-            completionMessage.textContent = `The error was: ${correctionText}`;
+            
+            // Parse the message to highlight wrong word (red) and correct word (green)
+            // Format: "wrongword" should be "correctword" or multiple: "word1" should be "word2", "word3" should be "word4"
+            let formattedMessage = correctionText;
+            
+            // Match pattern: "word" should be "word"
+            const pattern = /"([^"]+)"\s+should be\s+"([^"]+)"/g;
+            formattedMessage = formattedMessage.replace(pattern, (match, wrongWord, correctWord) => {
+                return `<span class="typo-word">"${wrongWord}"</span> should be <span class="correct-word">"${correctWord}"</span>`;
+            });
+            
+            completionMessage.innerHTML = formattedMessage;
         }
         
         // Calculate and display elapsed time
@@ -1924,16 +1805,6 @@ class DailyTypoGame {
             feedbackDiv.className = 'feedback';
         }
         
-        const wrongIndicator = document.getElementById('wrong-indicator');
-        if (wrongIndicator) {
-            wrongIndicator.style.display = 'none';
-        }
-        
-        const correctIndicator = document.getElementById('correct-indicator');
-        if (correctIndicator) {
-            correctIndicator.style.display = 'none';
-        }
-        
         // Clear correct highlights when resetting
         this.clearCorrectHighlights();
         
@@ -2001,15 +1872,6 @@ class DailyTypoGame {
         const year = date.getFullYear();
         const formattedDate = `${months[date.getMonth()]} ${date.getDate()}, ${year}`;
         
-        const welcomePuzzleNumber = document.getElementById('welcome-puzzle-number');
-        const welcomePuzzleDate = document.getElementById('welcome-puzzle-date');
-        
-        if (welcomePuzzleNumber) {
-            welcomePuzzleNumber.textContent = `#${puzzleNumber}`;
-        }
-        if (welcomePuzzleDate) {
-            welcomePuzzleDate.textContent = formattedDate;
-        }
         
         if (welcomeScreen) {
             welcomeScreen.style.display = 'block';
@@ -2057,499 +1919,6 @@ class DailyTypoGame {
             gameContent.style.display = 'block';
         }
     }
-    
-    // ========== DEV MODE FUNCTIONS ==========
-    
-    toggleDevMode() {
-        this.devMode = !this.devMode;
-        const panel = document.getElementById('dev-mode-panel');
-        if (this.devMode) {
-            panel.classList.add('open');
-            // Switch to create tab by default
-            document.querySelectorAll('.dev-tab').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.dev-tab-content').forEach(c => c.classList.remove('active'));
-            const createTab = document.querySelector('[data-tab="create"]');
-            if (createTab) {
-                createTab.classList.add('active');
-                document.getElementById('dev-tab-create').classList.add('active');
-            }
-            // Ensure game content is visible so user can see the article while working
-            const gameContent = document.getElementById('game-content');
-            if (gameContent && this.devArticle) {
-                gameContent.style.display = 'block';
-            }
-        } else {
-            panel.classList.remove('open');
-            // Don't reset dev state - keep it so user can continue editing
-            // Only reset if explicitly needed (e.g., starting new article)
-        }
-    }
-    
-    editArticle(index) {
-        if (index < 0 || index >= this.articlesConfig.articles.length) {
-            alert('Invalid article index');
-            return;
-        }
-        
-        const article = this.articlesConfig.articles[index];
-        this.editingArticleIndex = index; // Track which article we're editing
-        
-        // Switch to create tab
-        document.querySelectorAll('.dev-tab').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('.dev-tab-content').forEach(c => c.classList.remove('active'));
-        const createTab = document.querySelector('[data-tab="create"]');
-        if (createTab) {
-            createTab.classList.add('active');
-            document.getElementById('dev-tab-create').classList.add('active');
-        }
-        
-        // Load article into dev mode
-        // Note: article.extract already has replacements applied
-        this.devArticle = {
-            title: article.title,
-            extract: article.extract, // Current state with replacements
-            category: article.category || 'General Knowledge',
-            thumbnail: article.thumbnail || null,
-            description: article.description || null
-        };
-        
-        // Get replacements (already applied in the extract)
-        const replacements = article.replacements || [{original: article.originalWord, replacement: article.wrongWord}];
-        
-        // To edit, we need the original extract (without replacements)
-        // Reverse replacements to reconstruct original text
-        let originalExtract = article.extract;
-        replacements.slice().reverse().forEach(r => {
-            const escapedReplacement = r.replacement.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            const regex = new RegExp(`\\b${escapedReplacement}\\b`, 'gi');
-            originalExtract = originalExtract.replace(regex, match => {
-                if (match[0] === match[0].toUpperCase()) {
-                    return r.original.charAt(0).toUpperCase() + r.original.slice(1);
-                }
-                return r.original.toLowerCase();
-            });
-        });
-        
-        // Start with original extract, but keep track of existing replacements
-        this.devOriginalExtract = originalExtract;
-        this.devArticle.extract = originalExtract; // Start editing from original
-        this.devReplacements = []; // Clear replacements - user will need to re-add them or we'll restore them
-        
-        // Actually, let's keep the current state (with replacements) and allow adding more
-        // User sees what's currently wrong and can add/modify
-        this.devArticle.extract = article.extract; // Keep current state
-        this.devReplacements = replacements.map(r => ({
-            original: r.original,
-            replacement: r.replacement
-        }));
-        
-        // Display article in dev mode
-        this.currentArticle = this.devArticle;
-        this.displayArticleForDev();
-        
-        // Set up UI
-        const subjectInput = document.getElementById('dev-subject-input');
-        const categoryInput = document.getElementById('dev-category-input');
-        const saveSection = document.getElementById('dev-save-section');
-        const statusDiv = document.getElementById('dev-status');
-        
-        if (subjectInput) subjectInput.value = article.title;
-        if (categoryInput) categoryInput.value = article.category || 'General Knowledge';
-        if (saveSection) saveSection.style.display = 'block';
-        
-        if (statusDiv) {
-            statusDiv.innerHTML = 
-                `📝 Editing: <strong>${article.title}</strong><br>` +
-                `<small style="color: #666;">Green highlighted words are already replaced. Click words to add more replacements, then click "Update Article" to save.</small>`;
-            statusDiv.style.background = '#d4edda';
-        }
-        
-        // Change button text to indicate editing
-        const saveBtn = document.getElementById('dev-save-btn');
-        if (saveBtn) {
-            saveBtn.textContent = '💾 Update Article';
-        }
-    }
-    
-    async devFetchArticle() {
-        const subjectInput = document.getElementById('dev-subject-input');
-        const subject = subjectInput.value.trim();
-        const statusDiv = document.getElementById('dev-status');
-        
-        if (!subject) {
-            statusDiv.textContent = 'Please enter a subject';
-            statusDiv.style.background = '#ffe6e6';
-            return;
-        }
-        
-        statusDiv.textContent = 'Fetching article...';
-        statusDiv.style.background = '#fff3cd';
-        
-        try {
-            let article = null;
-            try {
-                article = await Promise.race([
-                    this.fetchWikipediaArticle(subject),
-                    new Promise((_, reject) => 
-                        setTimeout(() => reject(new Error('Timeout')), 10000)
-                    )
-                ]);
-            } catch (error) {
-                console.error('Error fetching:', error);
-                article = this.getFallbackArticle(subject);
-            }
-            
-            if (!article || !article.extract) {
-                throw new Error('Failed to fetch article');
-            }
-            
-            // Store original article (without errors)
-            this.devArticle = {
-                title: article.title,
-                extract: article.extract, // Keep original, no errors
-                category: article.category || this.getArticleCategory(article.title, article.description),
-                thumbnail: article.thumbnail || null,
-                description: article.description || null
-            };
-            
-            // Store original extract and reset replacements
-            this.devOriginalExtract = article.extract;
-            this.devReplacements = [];
-            this.editingArticleIndex = null; // Not editing, creating new
-            
-            // Display the article in the main game area for editing
-            this.currentArticle = this.devArticle;
-            this.displayArticleForDev();
-            
-            statusDiv.textContent = `Article loaded: ${article.title}`;
-            statusDiv.style.background = '#d4edda';
-            
-            // Show save section
-            document.getElementById('dev-save-section').style.display = 'block';
-            document.getElementById('dev-category-input').value = this.devArticle.category || 'General Knowledge';
-            
-        } catch (error) {
-            statusDiv.textContent = `Error: ${error.message}`;
-            statusDiv.style.background = '#ffe6e6';
-        }
-    }
-    
-    displayArticleForDev() {
-        // Make sure game content is visible
-        document.getElementById('game-content').style.display = 'block';
-        document.getElementById('loading').style.display = 'none';
-        
-        // Display article without errors, with special dev mode click handlers
-        document.getElementById('article-title').textContent = this.devArticle.title;
-        document.getElementById('article-category').textContent = this.devArticle.category || 'General Knowledge';
-        
-        const contentDiv = document.getElementById('article-content');
-        const paragraphs = this.devArticle.extract.split(/\n\n+/).filter(p => p.trim());
-        
-        let html = '';
-        if (this.devArticle.thumbnail) {
-            html += `<div class="article-thumbnail">
-                <img src="${this.devArticle.thumbnail}" alt="${this.devArticle.title}" style="max-width: 100%; height: auto; margin-bottom: 15px;">
-            </div>`;
-        }
-        
-        html += paragraphs.map(para => {
-            const words = para.split(/(\s+)/);
-            const wrappedWords = words.map(word => {
-                if (/^\s+$/.test(word)) {
-                    return word;
-                }
-                const wordTrimmed = word.trim();
-                
-                // Check if this word was replaced
-                const replacement = this.devReplacements.find(r => 
-                    wordTrimmed.toLowerCase() === r.replacement.toLowerCase() ||
-                    wordTrimmed.toLowerCase() === r.replacement.charAt(0).toUpperCase() + r.replacement.slice(1).toLowerCase()
-                );
-                
-                // Add special dev mode class
-                let wordClass = 'word-clickable';
-                if (this.devSelectedWord && wordTrimmed === this.devOriginalWord) {
-                    wordClass += ' word-dev-selected';
-                } else if (replacement) {
-                    // Highlight replaced words
-                    wordClass += ' word-dev-replaced';
-                }
-                
-                return `<span class="${wordClass}" data-word="${wordTrimmed}" title="${replacement ? `Replaced "${replacement.original}" with "${replacement.replacement}"` : ''}">${word}</span>`;
-            }).join('');
-            return `<p>${wrappedWords}</p>`;
-        }).join('');
-        
-        contentDiv.innerHTML = html;
-        
-        // Set up dev mode click handlers
-        this.setupDevWordClickHandlers();
-    }
-    
-    setupDevWordClickHandlers() {
-        const words = document.querySelectorAll('#article-content .word-clickable');
-        words.forEach(wordEl => {
-            wordEl.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const word = wordEl.textContent.trim();
-                if (!word || word.length < 2) return;
-                
-                // Clear previous selection
-                document.querySelectorAll('.word-dev-selected').forEach(el => {
-                    el.classList.remove('word-dev-selected');
-                });
-                
-                // Select this word
-                wordEl.classList.add('word-dev-selected');
-                this.devSelectedWord = wordEl;
-                this.devOriginalWord = word;
-                
-                // Show selection controls
-                document.getElementById('dev-selected-word').textContent = word;
-                document.getElementById('dev-replacement-input').value = '';
-                document.getElementById('dev-selection-controls').style.display = 'block';
-            });
-        });
-    }
-    
-    devConfirmReplacement() {
-        const replacementInput = document.getElementById('dev-replacement-input');
-        const replacement = replacementInput.value.trim();
-        
-        if (!replacement) {
-            alert('Please enter a replacement word');
-            return;
-        }
-        
-        if (!this.devOriginalWord) {
-            alert('Please select a word first');
-            return;
-        }
-        
-        this.devReplacementWord = replacement;
-        
-        // Track this replacement
-        this.devReplacements.push({
-            original: this.devOriginalWord,
-            replacement: replacement
-        });
-        
-        // Replace ALL occurrences of the word in the article (not just first)
-        // But only replace the exact word we selected (to avoid replacing similar words)
-        const escapedOriginal = this.devOriginalWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        // Use word boundaries to ensure exact matches, but be careful with case
-        const regex = new RegExp(`\\b${escapedOriginal}\\b`, 'gi');
-        let replacementCount = 0;
-        this.devArticle.extract = this.devArticle.extract.replace(regex, match => {
-            replacementCount++;
-            // Preserve case of original
-            if (match[0] === match[0].toUpperCase()) {
-                return replacement.charAt(0).toUpperCase() + replacement.slice(1);
-            }
-            return replacement.toLowerCase();
-        });
-        
-        if (replacementCount === 0) {
-            // Try without word boundaries as fallback
-            const simpleRegex = new RegExp(escapedOriginal, 'gi');
-            this.devArticle.extract = this.devArticle.extract.replace(simpleRegex, match => {
-                if (match[0] === match[0].toUpperCase()) {
-                    return replacement.charAt(0).toUpperCase() + replacement.slice(1);
-                }
-                return replacement.toLowerCase();
-            });
-        }
-        
-        // Clear selection state (but keep replacement tracking)
-        this.devSelectedWord = null;
-        this.devOriginalWord = null;
-        
-        // Update display
-        this.displayArticleForDev();
-        
-        // Show confirmation with summary
-        const replacementSummary = this.devReplacements.map(r => 
-            `"${r.original}" → "${r.replacement}"`
-        ).join(', ');
-        document.getElementById('dev-status').innerHTML = 
-            `✓ Replaced "${this.devReplacements[this.devReplacements.length - 1].original}" with "${replacement}"<br>` +
-            `<small>All replacements (${this.devReplacements.length}): ${replacementSummary}</small><br>` +
-            `<small style="color: #666;">You can select another word to replace, or save the article.</small>`;
-        document.getElementById('dev-status').style.background = '#d4edda';
-        
-        // Keep selection controls visible so user can make more replacements
-        // Don't hide it: document.getElementById('dev-selection-controls').style.display = 'none';
-    }
-    
-    devClearSelection() {
-        this.devSelectedWord = null;
-        this.devOriginalWord = null;
-        document.querySelectorAll('.word-dev-selected').forEach(el => {
-            el.classList.remove('word-dev-selected');
-        });
-        document.getElementById('dev-selection-controls').style.display = 'none';
-    }
-    
-    async devSaveArticle() {
-        if (!this.devArticle) {
-            alert('Please fetch an article first');
-            return;
-        }
-        
-        if (!this.devReplacements || this.devReplacements.length === 0) {
-            alert('Please select a word and provide a replacement first');
-            return;
-        }
-        
-        // Support multiple replacements - save them all
-        const categoryInput = document.getElementById('dev-category-input');
-        const category = categoryInput.value.trim() || 'General Knowledge';
-        
-        // Verify that the extract actually contains the replacement words
-        const extractLower = this.devArticle.extract.toLowerCase();
-        let hasAllReplacements = true;
-        const missingReplacements = [];
-        
-        this.devReplacements.forEach(r => {
-            const replacementLower = r.replacement.toLowerCase();
-            if (!extractLower.includes(replacementLower)) {
-                hasAllReplacements = false;
-                missingReplacements.push(r.replacement);
-                console.error(`ERROR: Replacement "${r.replacement}" not found in extract!`);
-                console.error(`Original word was: "${r.original}"`);
-            }
-        });
-        
-        if (!hasAllReplacements) {
-            alert(`Warning: Some replacements may not be applied correctly!\nMissing: ${missingReplacements.join(', ')}\n\nPlease check the article and try replacing again.`);
-            return;
-        }
-        
-        // Create article entry in new minimal format (version 2.0)
-        // Only save title, wrong word, and correct word - article will be fetched from Wikipedia
-        const articleEntry = {
-            title: this.devArticle.title,
-            wrong: this.devReplacements[0].replacement, // The wrong word (what players need to find)
-            correct: this.devReplacements[0].original,    // The correct word (what it should be)
-            category: category  // Save the category from input
-        };
-        
-        // Note: We only support single replacement in new format for simplicity
-        // If multiple replacements are needed, they can be added manually to the JSON
-        if (this.devReplacements.length > 1) {
-        }
-        
-        // Check if we're editing an existing article
-        if (this.editingArticleIndex !== null && this.editingArticleIndex !== undefined) {
-            // Update existing article
-            this.articlesConfig.articles[this.editingArticleIndex] = articleEntry;
-            document.getElementById('dev-status').innerHTML = 
-                `✓ Article "${articleEntry.title}" updated successfully!<br>` +
-                `<small style="color: #666;">✨ Auto-saved!</small>`;
-        } else {
-            // Add new article
-            if (!this.articlesConfig) {
-                this.articlesConfig = { version: "2.0", articles: [], scheduled: {} };
-            }
-            // Ensure version is 2.0 for new format
-            if (!this.articlesConfig.version || this.articlesConfig.version === "1.0") {
-                this.articlesConfig.version = "2.0";
-            }
-            // Ensure scheduled object exists
-            if (!this.articlesConfig.scheduled) {
-                this.articlesConfig.scheduled = {};
-            }
-            this.articlesConfig.articles.push(articleEntry);
-            document.getElementById('dev-status').innerHTML = 
-                `✓ Article "${articleEntry.title}" added successfully!<br>` +
-                `<small style="color: #666;">✨ Auto-saved! ${this.articlesConfig.articles.length} article(s) total.</small>`;
-        }
-        
-        // Auto-save config (instant, no file dialog!)
-        this.saveArticlesConfig();
-        
-        // Update counts in manage tab if open
-        this.updateDevArticlesListFull();
-        
-        // Reset dev state
-        this.devArticle = null;
-        this.devOriginalExtract = null;
-        this.devSelectedWord = null;
-        this.devOriginalWord = null;
-        this.devReplacementWord = null;
-        this.devReplacements = [];
-        this.editingArticleIndex = null;
-        document.getElementById('dev-subject-input').value = '';
-        document.getElementById('dev-status').style.background = '#d4edda';
-        document.getElementById('dev-save-section').style.display = 'none';
-        
-        // Reset button text
-        const saveBtn = document.getElementById('dev-save-btn');
-        if (saveBtn) {
-            saveBtn.textContent = '✨ Add to Game';
-        }
-        
-        // Clear article display
-        document.getElementById('article-content').innerHTML = '';
-        document.getElementById('article-title').textContent = '';
-        document.getElementById('article-category').textContent = '';
-    }
-    
-    updateDevArticlesListFull() {
-        const listContent = document.getElementById('dev-articles-list-content-full');
-        const countSpan = document.getElementById('dev-articles-count-full');
-        
-        if (!listContent || !countSpan) return;
-        
-        if (!this.articlesConfig || !this.articlesConfig.articles || this.articlesConfig.articles.length === 0) {
-            listContent.innerHTML = '<div style="text-align: center; padding: 40px; color: #999;"><p>No articles yet.</p><p style="font-size: 0.9rem;">Switch to "Create New" tab to add your first article!</p></div>';
-            countSpan.textContent = '0';
-            return;
-        }
-        
-        countSpan.textContent = this.articlesConfig.articles.length.toString();
-        
-        listContent.innerHTML = this.articlesConfig.articles.map((article, index) => {
-            const replacements = article.replacements || [{original: article.originalWord, replacement: article.wrongWord}];
-            const replacementText = replacements.map(r => `"${r.original}" → "${r.replacement}"`).join(', ');
-            
-            return `
-                <div class="dev-article-item-full">
-                    <div class="dev-article-item-info">
-                        <div class="dev-article-item-title">${article.title}</div>
-                        <div class="dev-article-item-category">📂 ${article.category}</div>
-                        <div class="dev-article-item-replacements">${replacementText}</div>
-                        ${replacements.length > 1 ? `<div style="font-size: 0.8rem; color: #28a745; margin-top: 4px;">${replacements.length} replacements</div>` : ''}
-                    </div>
-                    <div class="dev-article-item-actions">
-                        <button class="dev-article-edit-btn" data-index="${index}" title="Edit article">✏️ Edit</button>
-                        <button class="dev-article-delete-btn" data-index="${index}" title="Delete article">🗑️ Delete</button>
-                    </div>
-                </div>
-            `;
-        }).join('');
-        
-        // Add delete handlers
-        listContent.querySelectorAll('.dev-article-delete-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const index = parseInt(e.target.dataset.index);
-                if (confirm(`Delete article "${this.articlesConfig.articles[index].title}"?`)) {
-                    this.articlesConfig.articles.splice(index, 1);
-                    this.saveArticlesConfig(); // Auto-save
-                    this.updateDevArticlesListFull();
-                }
-            });
-        });
-        
-        // Add edit handlers
-        listContent.querySelectorAll('.dev-article-edit-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const index = parseInt(e.target.dataset.index);
-                this.editArticle(index);
-            });
-        });
-    }
 }
 
 // Initialize game when page loads
@@ -2557,12 +1926,6 @@ document.addEventListener('DOMContentLoaded', () => {
     window.game = new DailyTypoGame();
     
     // Debug helper functions (available in console)
-    window.clearCompletions = () => {
-        localStorage.removeItem('dailyTypoCompletions');
-        console.log('✓ Completions cleared! Reloading...');
-        location.reload();
-    };
-    
     window.clearToday = () => {
         const game = window.game;
         if (!game) {
@@ -2575,12 +1938,6 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('dailyTypoCompletions', JSON.stringify(completions));
         console.log(`✓ Today's puzzle (${today}) cleared! Reloading...`);
         location.reload();
-    };
-    
-    window.showCompletions = () => {
-        const completions = JSON.parse(localStorage.getItem('dailyTypoCompletions') || '{}');
-        console.log('Current completions:', completions);
-        return completions;
     };
     
     window.showNextDay = async () => {
@@ -2600,11 +1957,5 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log(`✓ Loading next day's puzzle (${nextDateString})...`);
         await game.loadDailyGame(nextDateString, true); // allowFuture = true for preview
     };
-    
-    console.log('Debug helpers available:');
-    console.log('  - clearCompletions() - Clear all completions');
-    console.log('  - clearToday() - Clear today\'s puzzle only');
-    console.log('  - showCompletions() - Show all completions');
-    console.log('  - showNextDay() - Show next day\'s puzzle (call multiple times to advance)');
 });
 
