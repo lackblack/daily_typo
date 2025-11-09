@@ -1073,8 +1073,10 @@ class DailyTypoGame {
             // AND we must have selected ALL wrong words (if there's only one) or at least one (if multiple)
             const allSelectedAreWrong = hasCorrectWord && !hasIncorrectWord;
             // Must have selected all wrong words (if single) or at least one (if multiple)
+            // For single wrong word: allow selecting all occurrences (all selected must match the wrong word)
+            // For multiple wrong words: must select all unique wrong words
             const selectedAllWrongWords = errorWords.length === 1 
-                ? correctMatches === 1 && guessWords.length === 1
+                ? correctMatches === guessWords.length && correctMatches >= 1
                 : correctMatches >= 1 && guessWords.length === correctMatches;
             
             if (allSelectedAreWrong && selectedAllWrongWords) {
