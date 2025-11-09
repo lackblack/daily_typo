@@ -1812,7 +1812,7 @@ class DailyTypoGame {
         const submitButtonsDiv = document.getElementById('submit-buttons');
         if (submitButtonsDiv) {
             submitButtonsDiv.innerHTML = `
-                <button id="submit-guess-btn" class="submit-btn primary">SUBMIT TYPO</button>
+                <button id="submit-guess-btn" class="submit-btn primary">SUBMIT ANSWER</button>
                 <button id="clear-selection-btn" class="submit-btn clear">Clear</button>
             `;
             const submitBtn = document.getElementById('submit-guess-btn');
