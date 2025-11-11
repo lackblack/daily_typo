@@ -19,8 +19,8 @@
     },
     {
       "title": "The Beatles",
-      "wrong": "Star",
-      "correct": "Starr",
+      "wrong": "Michael",
+      "correct": "George",
       "category": "Biography",
       "date": "29.10.2025"
     },
@@ -115,37 +115,138 @@
       "wrong": "Nevada",
       "correct": "Arizona",
       "category": "Geography",
-      "date": "11.11.2025"
+      "date": "11.11.2025",
+      "specialDay": "Remembrance Day / Veterans Day"
     },
     {
       "title": "Mozart",
-      "wrong": "math",
-      "correct": "music",
-      "occurrence": 1,
-      "wrongOccurrence": 1,
+      "wrong": "athletic",
+      "correct": "musical",
       "category": "Biography",
       "date": "12.11.2025"
     },
     {
       "title": "Coffee",
-      "wrong": "South America",
-      "correct": "Africa",
+      "wrong": "Finland",
+      "correct": "Ethiopia",
       "category": "Food & Drink",
       "date": "13.11.2025"
     },
     {
       "title": "Eiffel Tower",
-      "wrong": "1900",
-      "correct": "1889",
+      "wrong": "permanent",
+      "correct": "temporary",
       "category": "Geography",
       "date": "14.11.2025"
     },
     {
       "title": "Titanic",
-      "wrong": "1911",
-      "correct": "1912",
+      "wrong": "American",
+      "correct": "British",
       "category": "History",
       "date": "15.11.2025"
+    },
+    {
+      "title": "Pyramid",
+      "wrong": "trapezoid",
+      "correct": "pyramid",
+      "wrongOccurrence": 1,
+      "occurrence": 2,
+      "category": "History",
+      "date": "16.11.2025"
+    },
+    {
+      "title": "Volcano",
+      "wrong": "tesseract",
+      "correct": "tectonic",
+      "category": "Nature",
+      "date": "17.11.2025"
+    },
+    {
+      "title": "Ludwig van Beethoven",
+      "wrong": "Marie",
+      "correct": "Elise",
+      "category": "Biography",
+      "date": "18.11.2025"
+    },
+    {
+      "title": "Jupiter",
+      "wrong": "smallest",
+      "correct": "largest",
+      "category": "General Knowledge",
+      "date": "19.11.2025"
+    },
+    {
+      "title": "Pizza",
+      "wrong": "Rome",
+      "correct": "Naples",
+      "category": "Food & Drink",
+      "date": "20.11.2025"
+    },
+    {
+      "title": "Mount Everest",
+      "wrong": "3,848",
+      "correct": "8,848",
+      "category": "Geography",
+      "date": "21.11.2025"
+    },
+    {
+      "title": "Dinosaur",
+      "wrong": "mammal",
+      "correct": "Archosaur",
+      "category": "Nature",
+      "date": "22.11.2025"
+    },
+    {
+      "title": "Galaxy",
+      "wrong": "Latin",
+      "correct": "Greek",
+      "category": "General Knowledge",
+      "date": "23.11.2025"
+    },
+    {
+      "title": "Isaac Newton",
+      "wrong": "six",
+      "correct": "three",
+      "category": "Biography",
+      "date": "24.11.2025"
+    },
+    {
+      "title": "Mars",
+      "wrong": "Cousin",
+      "correct": "Red",
+      "category": "General Knowledge",
+      "date": "25.11.2025"
+    },
+    {
+      "title": "Michelangelo",
+      "wrong": "Baroque",
+      "correct": "Renaissance",
+      "category": "Biography",
+      "date": "26.11.2025"
+    },
+    {
+      "title": "Thanksgiving",
+      "wrong": "workday",
+      "correct": "holiday",
+      "category": "Holidays",
+      "date": "27.11.2025",
+      "specialDay": "Happy Thanksgiving"
+    },
+    {
+      "title": "Black Friday",
+      "wrong": "Saturday",
+      "correct": "Friday",
+      "category": "Holidays",
+      "date": "28.11.2025",
+      "specialDay": "Black Friday"
+    },
+    {
+      "title": "Neptune",
+      "wrong": "closest",
+      "correct": "farthest",
+      "category": "General Knowledge",
+      "date": "29.11.2025"
     }
   ],
   "scheduled": {}
